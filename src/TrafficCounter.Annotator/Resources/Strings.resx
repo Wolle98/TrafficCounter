@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Speed" xml:space="preserve"><value>Speed</value></data>
+  <data name="Brightness" xml:space="preserve"><value>Brightness</value></data>
+  <data name="Contrast" xml:space="preserve"><value>Contrast</value></data>
+  <data name="Reset image" xml:space="preserve"><value>Reset image</value></data>
+  <data name="Videos" xml:space="preserve"><value>Videos</value></data>
+  <data name="Folder…" xml:space="preserve"><value>Folder…</value></data>
+  <data name="Annotated in this video" xml:space="preserve"><value>Annotated in this video</value></data>
+  <data name="Class and direction" xml:space="preserve"><value>Class and direction</value></data>
+  <data name="Car" xml:space="preserve"><value>Car</value></data>
+  <data name="Van" xml:space="preserve"><value>Van</value></data>
+  <data name="Truck" xml:space="preserve"><value>Truck</value></data>
+  <data name="Bus" xml:space="preserve"><value>Bus</value></data>
+  <data name="Motorcycle" xml:space="preserve"><value>Motorcycle</value></data>
+  <data name="Bicycle" xml:space="preserve"><value>Bicycle</value></data>
+  <data name="E-scooter" xml:space="preserve"><value>E-scooter</value></data>
+  <data name="Agricultural" xml:space="preserve"><value>Agricultural</value></data>
+  <data name="Unknown" xml:space="preserve"><value>Unknown</value></data>
+  <data name="unclassified" xml:space="preserve"><value>unclassified</value></data>
+  <data name="Undo" xml:space="preserve"><value>Undo</value></data>
+  <data name="Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="|◀ Previous" xml:space="preserve"><value>|◀ Previous</value></data>
+  <data name="−1 frame" xml:space="preserve"><value>−1 frame</value></data>
+  <data name="+1 frame" xml:space="preserve"><value>+1 frame</value></data>
+  <data name="Next ▶|" xml:space="preserve"><value>Next ▶|</value></data>
+  <data name="Annotate speed" xml:space="preserve"><value>Annotate speed</value></data>
+  <data name="km/h on the speedometer" xml:space="preserve"><value>km/h on the speedometer</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Note (Enter saves, Esc cancels)" xml:space="preserve"><value>Note (Enter saves, Esc cancels)</value></data>
+  <data name="Dark" xml:space="preserve"><value>Dark</value></data>
+  <data name="Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Speeds" xml:space="preserve"><value>Speeds</value></data>
+  <data name="Selected: {0}" xml:space="preserve"><value>Selected: {0}</value></data>
+  <data name="{0} entries in {1}" xml:space="preserve"><value>{0} entries in {1}</value></data>
+  <data name="Press q again to quit" xml:space="preserve"><value>Press q again to quit</value></data>
+  <data name="No video – choose one on the left" xml:space="preserve"><value>No video – choose one on the left</value></data>
+  <data name="frame" xml:space="preserve"><value>frame</value></data>
+  <data name="paused" xml:space="preserve"><value>paused</value></data>
+  <data name="Continuing {0} with {1} entries." xml:space="preserve"><value>Continuing {0} with {1} entries.</value></data>
+  <data name="Video '{0}' could not be opened." xml:space="preserve"><value>Video '{0}' could not be opened.</value></data>
+  <data name="No bicycle entries." xml:space="preserve"><value>No bicycle entries.</value></data>
+  <data name="No earlier bicycle." xml:space="preserve"><value>No earlier bicycle.</value></data>
+  <data name="Select an entry first (mark a crossing or jump to an entry)." xml:space="preserve"><value>Select an entry first (mark a crossing or jump to an entry).</value></data>
+  <data name="Speed removed." xml:space="preserve"><value>Speed removed.</value></data>
+  <data name="Speed {0} km/h saved." xml:space="preserve"><value>Speed {0} km/h saved.</value></data>
+  <data name="Enter a speed between 1 and 199 km/h." xml:space="preserve"><value>Enter a speed between 1 and 199 km/h.</value></data>
+  <data name="Folder with videos" xml:space="preserve"><value>Folder with videos</value></data>
+  <data name="Keys: &lt;-/-&gt; mark, 0-8 class then speedometer, Num4/Num6 car + speedometer, v speedometer, u undo, Del delete here, n note, space play, , . frame, j l 5 s, J L 1 min, - + speed, q q quit" xml:space="preserve"><value>Keys: &lt;-/-&gt; mark, 0-8 class then speedometer, Num4/Num6 car + speedometer, v speedometer, u undo, Del delete here, n note, space play, , . frame, j l 5 s, J L 1 min, - + speed, q q quit</value></data>
+  <data name="Keys: &lt;-/-&gt; count, Num4/Num6 car, 0-8 class, b B next/previous bicycle, v speedometer, u undo, Del delete here, n note, space play, , . frame, j l 5 s, J L 1 min, - + speed, q q quit" xml:space="preserve"><value>Keys: &lt;-/-&gt; count, Num4/Num6 car, 0-8 class, b B next/previous bicycle, v speedometer, u undo, Del delete here, n note, space play, , . frame, j l 5 s, J L 1 min, - + speed, q q quit</value></data>
+</root>

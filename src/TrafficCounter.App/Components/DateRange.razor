@@ -1,0 +1,87 @@
+@* Period selection: two date fields plus quick buttons; a quick button sets the range and applies it at once. *@
+@inject TrafficQueries Queries
+
+<div class="date-range">
+    <label>@L["Range.From"] <input type="date" value="@From.ToString("yyyy-MM-dd")" @onchange="e => SetFrom(e.Value)" /></label>
+    <label>@L["Range.To"] <input type="date" value="@To.ToString("yyyy-MM-dd")" @onchange="e => SetTo(e.Value)" /></label>
+    <span class="quick">
+        @foreach ((string label, DateTime from, DateTime to) in QuickRanges)
+        {
+            <button type="button" class="@(from == From && to == To ? "quick active" : "quick")" @onclick="() => ApplyAsync(from, to)">@L[label]</button>
+        }
+    </span>
+</div>
+
+@code {
+    [Parameter] public DateTime From { get; set; }
+
+    [Parameter] public EventCallback<DateTime> FromChanged { get; set; }
+
+    [Parameter] public DateTime To { get; set; }
+
+    [Parameter] public EventCallback<DateTime> ToChanged { get; set; }
+
+    /// <summary>Called after a quick button changed the range.</summary>
+    [Parameter] public EventCallback OnApply { get; set; }
+
+    private DateTime? _firstDay;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _firstDay = await Queries.FirstMeasurementDayAsync();
+        }
+        catch (Exception)
+        {
+            // Without a database the other quick ranges still work.
+        }
+    }
+
+    /// <summary>Quick ranges (text key, inclusive start and end day); weeks start on Monday; "all" from the first measurement on.</summary>
+    public static IEnumerable<(string Label, DateTime From, DateTime To)> QuickRangesFor(DateTime today, DateTime? firstDay = null)
+    {
+        DateTime monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+        yield return ("Range.Today", today, today);
+        yield return ("Range.Yesterday", today.AddDays(-1), today.AddDays(-1));
+        yield return ("Range.ThisWeek", monday, today);
+        yield return ("Range.Last7", today.AddDays(-6), today);
+        yield return ("Range.ThisMonth", new DateTime(today.Year, today.Month, 1), today);
+        yield return ("Range.Last30", today.AddDays(-29), today);
+        yield return ("Range.ThisYear", new DateTime(today.Year, 1, 1), today);
+        yield return ("Range.Last365", today.AddDays(-364), today);
+        if (firstDay is DateTime first)
+        {
+            yield return ("Range.All", first < today ? first : today, today);
+        }
+    }
+
+    private IEnumerable<(string Label, DateTime From, DateTime To)> QuickRanges => QuickRangesFor(DateTime.Today, _firstDay);
+
+    private async Task SetFrom(object? value)
+    {
+        if (DateTime.TryParse(value as string, out DateTime date))
+        {
+            From = date;
+            await FromChanged.InvokeAsync(date);
+        }
+    }
+
+    private async Task SetTo(object? value)
+    {
+        if (DateTime.TryParse(value as string, out DateTime date))
+        {
+            To = date;
+            await ToChanged.InvokeAsync(date);
+        }
+    }
+
+    private async Task ApplyAsync(DateTime from, DateTime to)
+    {
+        From = from;
+        To = to;
+        await FromChanged.InvokeAsync(from);
+        await ToChanged.InvokeAsync(to);
+        await OnApply.InvokeAsync();
+    }
+}

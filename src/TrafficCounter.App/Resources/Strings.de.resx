@@ -1,0 +1,541 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <!-- German (Deutsch). -->
+  <data name="App.Title" xml:space="preserve">
+    <value>Verkehrszähler</value>
+  </data>
+  <data name="App.PageTitle" xml:space="preserve">
+    <value>{0} – Verkehrszähler</value>
+  </data>
+  <data name="Nav.Overview" xml:space="preserve">
+    <value>Übersicht</value>
+  </data>
+  <data name="Nav.Period" xml:space="preserve">
+    <value>Zeitraum</value>
+  </data>
+  <data name="Nav.WeekPattern" xml:space="preserve">
+    <value>Wochenmuster</value>
+  </data>
+  <data name="Nav.Speed" xml:space="preserve">
+    <value>Geschwindigkeit</value>
+  </data>
+  <data name="Nav.Operations" xml:space="preserve">
+    <value>Betrieb</value>
+  </data>
+  <data name="Language.Label" xml:space="preserve">
+    <value>Sprache</value>
+  </data>
+  <data name="Error.Occurred" xml:space="preserve">
+    <value>Ein Fehler ist aufgetreten.</value>
+  </data>
+  <data name="Error.Reload" xml:space="preserve">
+    <value>Neu laden</value>
+  </data>
+  <data name="Error.Title" xml:space="preserve">
+    <value>Fehler</value>
+  </data>
+  <data name="Error.Text" xml:space="preserve">
+    <value>Beim Bearbeiten der Anfrage ist ein Fehler aufgetreten.</value>
+  </data>
+  <data name="NotFound.Title" xml:space="preserve">
+    <value>Nicht gefunden</value>
+  </data>
+  <data name="NotFound.Text" xml:space="preserve">
+    <value>Die gesuchte Seite gibt es leider nicht.</value>
+  </data>
+  <data name="Common.Loading" xml:space="preserve">
+    <value>Lade …</value>
+  </data>
+  <data name="Common.NoData" xml:space="preserve">
+    <value>Noch keine Daten in der Datenbank.</value>
+  </data>
+  <data name="Common.DatabaseUnreachable" xml:space="preserve">
+    <value>Datenbank nicht erreichbar: {0}</value>
+  </data>
+  <data name="Common.Show" xml:space="preserve">
+    <value>Anzeigen</value>
+  </data>
+  <data name="Common.TimeMeasured" xml:space="preserve">
+    <value>der Zeit gemessen</value>
+  </data>
+  <data name="Common.All" xml:space="preserve">
+    <value>alle</value>
+  </data>
+  <data name="Reconnect.Rejoining" xml:space="preserve">
+    <value>Verbindung zum Server wird wiederhergestellt …</value>
+  </data>
+  <data name="Reconnect.RetryBefore" xml:space="preserve">
+    <value>Verbindung fehlgeschlagen … neuer Versuch in</value>
+  </data>
+  <data name="Reconnect.RetryAfter" xml:space="preserve">
+    <value>Sekunden.</value>
+  </data>
+  <data name="Reconnect.Failed" xml:space="preserve">
+    <value>Die Verbindung konnte nicht wiederhergestellt werden.</value>
+  </data>
+  <data name="Reconnect.RetryOrReload" xml:space="preserve">
+    <value>Bitte erneut versuchen oder die Seite neu laden.</value>
+  </data>
+  <data name="Reconnect.Retry" xml:space="preserve">
+    <value>Erneut versuchen</value>
+  </data>
+  <data name="Reconnect.Paused" xml:space="preserve">
+    <value>Der Server hat die Sitzung angehalten.</value>
+  </data>
+  <data name="Reconnect.ResumeFailed" xml:space="preserve">
+    <value>Die Sitzung konnte nicht fortgesetzt werden.</value>
+  </data>
+  <data name="Reconnect.Resume" xml:space="preserve">
+    <value>Fortsetzen</value>
+  </data>
+  <data name="Format.DayLong" xml:space="preserve">
+    <value>dddd, d. MMMM yyyy</value>
+  </data>
+  <data name="Format.DayRow" xml:space="preserve">
+    <value>ddd dd.MM.yyyy</value>
+  </data>
+  <data name="Format.HourRow" xml:space="preserve">
+    <value>ddd dd.MM. HH:00</value>
+  </data>
+  <data name="Format.ChartDay" xml:space="preserve">
+    <value>dd.MM.</value>
+  </data>
+  <data name="Format.DateTimeRow" xml:space="preserve">
+    <value>ddd dd.MM.yyyy HH:mm:ss</value>
+  </data>
+  <data name="Format.DateTimeShort" xml:space="preserve">
+    <value>dd.MM. HH:mm</value>
+  </data>
+  <data name="Format.DateTimeSeconds" xml:space="preserve">
+    <value>dd.MM. HH:mm:ss</value>
+  </data>
+  <data name="Format.ExcelDay" xml:space="preserve">
+    <value>dd.MM.yyyy</value>
+  </data>
+  <data name="Format.ExcelHour" xml:space="preserve">
+    <value>dd.MM.yyyy hh:00</value>
+  </data>
+  <data name="Format.ExcelDateTime" xml:space="preserve">
+    <value>dd.MM.yyyy hh:mm:ss</value>
+  </data>
+  <data name="Class.Car" xml:space="preserve">
+    <value>PKW</value>
+  </data>
+  <data name="Class.Van" xml:space="preserve">
+    <value>Transporter</value>
+  </data>
+  <data name="Class.Truck" xml:space="preserve">
+    <value>LKW</value>
+  </data>
+  <data name="Class.Bus" xml:space="preserve">
+    <value>Bus</value>
+  </data>
+  <data name="Class.Agricultural" xml:space="preserve">
+    <value>Landwirtschaft</value>
+  </data>
+  <data name="Class.Motorcycle" xml:space="preserve">
+    <value>Motorrad</value>
+  </data>
+  <data name="Class.EScooter" xml:space="preserve">
+    <value>E-Scooter</value>
+  </data>
+  <data name="Class.Bicycle" xml:space="preserve">
+    <value>Fahrrad</value>
+  </data>
+  <data name="Class.Unknown" xml:space="preserve">
+    <value>unbekannt</value>
+  </data>
+  <data name="Table.Class" xml:space="preserve">
+    <value>Klasse</value>
+  </data>
+  <data name="Table.Count" xml:space="preserve">
+    <value>Anzahl</value>
+  </data>
+  <data name="Table.Share" xml:space="preserve">
+    <value>Anteil</value>
+  </data>
+  <data name="Table.Day" xml:space="preserve">
+    <value>Tag</value>
+  </data>
+  <data name="Table.Hour" xml:space="preserve">
+    <value>Stunde</value>
+  </data>
+  <data name="Table.Vehicles" xml:space="preserve">
+    <value>Fahrzeuge</value>
+  </data>
+  <data name="Table.Measured" xml:space="preserve">
+    <value>gemessen</value>
+  </data>
+  <data name="Table.PerHour" xml:space="preserve">
+    <value>pro Stunde</value>
+  </data>
+  <data name="Table.ExtrapolatedHint" xml:space="preserve">
+    <value>Hochgerechnet: {0} Fahrzeuge in {1} gemessenen Minuten gezählt</value>
+  </data>
+  <data name="Table.EstimateFootnote" xml:space="preserve">
+    <value>≈ hochgerechnet: Die Zeit wurde nicht vollständig gemessen, die gezählten Fahrzeuge sind auf eine volle Stunde hochgerechnet.</value>
+  </data>
+  <data name="Table.CoverageHint" xml:space="preserve">
+    <value>{0} von {1} Minuten gemessen</value>
+  </data>
+  <data name="Table.Time" xml:space="preserve">
+    <value>Zeit</value>
+  </data>
+  <data name="Table.Vehicle" xml:space="preserve">
+    <value>Fahrzeug</value>
+  </data>
+  <data name="Table.Direction" xml:space="preserve">
+    <value>Richtung</value>
+  </data>
+  <data name="Range.From" xml:space="preserve">
+    <value>von</value>
+  </data>
+  <data name="Range.To" xml:space="preserve">
+    <value>bis</value>
+  </data>
+  <data name="Range.Today" xml:space="preserve">
+    <value>heute</value>
+  </data>
+  <data name="Range.Yesterday" xml:space="preserve">
+    <value>gestern</value>
+  </data>
+  <data name="Range.ThisWeek" xml:space="preserve">
+    <value>diese Woche</value>
+  </data>
+  <data name="Range.Last7" xml:space="preserve">
+    <value>letzte 7 Tage</value>
+  </data>
+  <data name="Range.ThisMonth" xml:space="preserve">
+    <value>dieser Monat</value>
+  </data>
+  <data name="Range.Last30" xml:space="preserve">
+    <value>letzte 30 Tage</value>
+  </data>
+  <data name="Range.ThisYear" xml:space="preserve">
+    <value>dieses Jahr</value>
+  </data>
+  <data name="Range.Last365" xml:space="preserve">
+    <value>letzte 365 Tage</value>
+  </data>
+  <data name="Range.All" xml:space="preserve">
+    <value>alles</value>
+  </data>
+  <data name="Chart.PartlyMeasured" xml:space="preserve">
+    <value>{0}: nur {1} % der Zeit gemessen</value>
+  </data>
+  <data name="Chart.SideBySide" xml:space="preserve">
+    <value>linker Balken: {0}, rechter Balken (heller): {1}</value>
+  </data>
+  <data name="Heatmap.Cell" xml:space="preserve">
+    <value>{0} {1}:00–{2}:00: {3} Fahrzeuge/h</value>
+  </data>
+  <data name="Heatmap.Unit" xml:space="preserve">
+    <value>Fahrzeuge/h</value>
+  </data>
+  <data name="Heatmap.NotMeasured" xml:space="preserve">
+    <value>nicht gemessen</value>
+  </data>
+  <data name="Home.Today" xml:space="preserve">
+    <value>Heute</value>
+  </data>
+  <data name="Home.Yesterday" xml:space="preserve">
+    <value>Gestern</value>
+  </data>
+  <data name="Home.SinceMidnight" xml:space="preserve">
+    <value>Fahrzeuge seit 0 Uhr</value>
+  </data>
+  <data name="Home.WholeDay" xml:space="preserve">
+    <value>Fahrzeuge am ganzen Tag</value>
+  </data>
+  <data name="Home.LastHour" xml:space="preserve">
+    <value>in der letzten Stunde</value>
+  </data>
+  <data name="Home.PerHour" xml:space="preserve">
+    <value>Fahrzeuge pro Stunde</value>
+  </data>
+  <data name="Home.RainChart" xml:space="preserve">
+    <value>Niederschlag pro Stunde</value>
+  </data>
+  <data name="Home.RainSeries" xml:space="preserve">
+    <value>Niederschlag (mm, Wetterstation des DWD)</value>
+  </data>
+  <data name="Home.Usual" xml:space="preserve">
+    <value>üblich ({0})</value>
+  </data>
+  <data name="Home.ChartHint" xml:space="preserve">
+    <value>Balken: nach Fahrzeugklasse. Linie: übliche Werte an einem {0} (Mittel der vier Wochen davor, bezogen auf die gemessene Zeit). Grauer Hintergrund: in dieser Stunde lief der Zähler nicht durchgehend.</value>
+  </data>
+  <data name="Home.ByClass" xml:space="preserve">
+    <value>Nach Fahrzeugklasse</value>
+  </data>
+  <data name="Home.SpeedHeading" xml:space="preserve">
+    <value>Geschwindigkeit (Kraftfahrzeuge)</value>
+  </data>
+  <data name="Home.SpeedSummary" xml:space="preserve">
+    <value>Median {0} km/h, V85 {1} km/h, über 30 km/h: {2}, über 50 km/h: {3} ({4} Fahrzeuge).</value>
+  </data>
+  <data name="Home.Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="Home.UpdatedAt" xml:space="preserve">
+    <value>Stand {0}, aktualisiert sich jede Minute.</value>
+  </data>
+  <data name="Period.Grid" xml:space="preserve">
+    <value>Raster</value>
+  </data>
+  <data name="Period.Hours" xml:space="preserve">
+    <value>Stunden</value>
+  </data>
+  <data name="Period.Days" xml:space="preserve">
+    <value>Tage</value>
+  </data>
+  <data name="Period.Direction" xml:space="preserve">
+    <value>Richtung</value>
+  </data>
+  <data name="Period.Both" xml:space="preserve">
+    <value>beide</value>
+  </data>
+  <data name="Period.SideBySide" xml:space="preserve">
+    <value>Richtungen nebeneinander</value>
+  </data>
+  <data name="Period.Print" xml:space="preserve">
+    <value>Drucken / PDF</value>
+  </data>
+  <data name="Period.Counted" xml:space="preserve">
+    <value>Fahrzeuge gezählt</value>
+  </data>
+  <data name="Period.PerDay" xml:space="preserve">
+    <value>pro Tag, hochgerechnet auf durchgehende Messung</value>
+  </data>
+  <data name="Period.ChartByDirection" xml:space="preserve">
+    <value>Fahrzeuge im Zeitraum nach Richtung</value>
+  </data>
+  <data name="Period.Chart" xml:space="preserve">
+    <value>Fahrzeuge im Zeitraum</value>
+  </data>
+  <data name="Period.DaysOnly" xml:space="preserve">
+    <value>Für mehr als 14 Tage wird nach Tagen gerastert.</value>
+  </data>
+  <data name="Period.RainChart" xml:space="preserve">
+    <value>Niederschlag</value>
+  </data>
+  <data name="Period.RainSeries" xml:space="preserve">
+    <value>Niederschlag (mm, Wetterstation des DWD)</value>
+  </data>
+  <data name="Period.GapHint" xml:space="preserve">
+    <value>Grauer Hintergrund: in diesem Abschnitt lief der Zähler nicht durchgehend, der Balken ist dort zu niedrig.</value>
+  </data>
+  <data name="Period.RainVsDry" xml:space="preserve">
+    <value>Bei Regen und trocken</value>
+  </data>
+  <data name="Period.HoursMeasured" xml:space="preserve">
+    <value>Stunden gemessen</value>
+  </data>
+  <data name="Period.VehiclesPerHour" xml:space="preserve">
+    <value>Fahrzeuge pro Stunde</value>
+  </data>
+  <data name="Period.BicyclesPerHour" xml:space="preserve">
+    <value>davon Fahrräder pro Stunde</value>
+  </data>
+  <data name="Period.Dry" xml:space="preserve">
+    <value>trocken</value>
+  </data>
+  <data name="Period.Rain" xml:space="preserve">
+    <value>Regen</value>
+  </data>
+  <data name="Period.Rain1mm" xml:space="preserve">
+    <value>Regen ab 1 mm</value>
+  </data>
+  <data name="Period.RainHint" xml:space="preserve">
+    <value>Nur Stunden zwischen 7 und 20 Uhr, damit die Nacht den Vergleich nicht verzerrt. Regen: mindestens 0,1 mm in der Stunde (Wetterstation des DWD).</value>
+  </data>
+  <data name="Period.EndBeforeStart" xml:space="preserve">
+    <value>Das Ende liegt vor dem Anfang.</value>
+  </data>
+  <data name="Nav.DayPattern" xml:space="preserve">
+    <value>Tagesmuster</value>
+  </data>
+  <data name="Day.Weekday" xml:space="preserve">
+    <value>Wochentag</value>
+  </data>
+  <data name="Day.Hint" xml:space="preserve">
+    <value>Fahrzeuge pro Stunde an jedem Datum des gewählten Wochentags (neuestes zuerst), bezogen auf die gemessene Zeit, um denselben Tag über die Wochen zu vergleichen. Leere Felder: dort wurde weniger als eine halbe Stunde gemessen.</value>
+  </data>
+  <data name="Format.DayPatternRow" xml:space="preserve">
+    <value>dd.MM.yyyy</value>
+  </data>
+  <data name="Week.Vehicles" xml:space="preserve">
+    <value>Fahrzeuge</value>
+  </data>
+  <data name="Week.Motor" xml:space="preserve">
+    <value>Kraftfahrzeuge</value>
+  </data>
+  <data name="Week.Bicycles" xml:space="preserve">
+    <value>Fahrräder</value>
+  </data>
+  <data name="Week.Heavy" xml:space="preserve">
+    <value>LKW und Busse</value>
+  </data>
+  <data name="Week.Hint" xml:space="preserve">
+    <value>Durchschnittliche Fahrzeuge pro Stunde je Wochentag und Uhrzeit, bezogen auf die Zeit, in der gemessen wurde. Leere Felder: dort wurde weniger als eine halbe Stunde gemessen.</value>
+  </data>
+  <data name="Speed.Hint" xml:space="preserve">
+    <value>Statistische Schätzwerte für Kraftfahrzeuge, kein geeichtes Messverfahren. Der Maßstab ist mit Testfahrten bekannter Geschwindigkeit abgeglichen (20 Fahrten, Oktober 2026). Messfehler zur Orientierung: Eine einzelne Messung weicht typischerweise um etwa ±4 % ab, bei 30 km/h also um gut 1 km/h, in Einzelfällen mehr (17 von 20 Testfahrten lagen innerhalb ±5 %). Mittelwerte über viele Fahrzeuge sind auf etwa ±3 % genau; Vergleiche zwischen Tageszeiten und Richtungen sind davon kaum betroffen.</value>
+  </data>
+  <data name="Speed.NoSpeeds" xml:space="preserve">
+    <value>Im Zeitraum gibt es keine Geschwindigkeiten (Maßstab noch nicht kalibriert?).</value>
+  </data>
+  <data name="Speed.Median" xml:space="preserve">
+    <value>Median</value>
+  </data>
+  <data name="Speed.V85" xml:space="preserve">
+    <value>V85 (85 % fahren langsamer)</value>
+  </data>
+  <data name="Speed.Above" xml:space="preserve">
+    <value>über {0} km/h</value>
+  </data>
+  <data name="Speed.AboveShort" xml:space="preserve">
+    <value>über {0}</value>
+  </data>
+  <data name="Speed.Distribution" xml:space="preserve">
+    <value>Verteilung</value>
+  </data>
+  <data name="Speed.DistributionChart" xml:space="preserve">
+    <value>Geschwindigkeitsverteilung</value>
+  </data>
+  <data name="Speed.Vehicles" xml:space="preserve">
+    <value>Fahrzeuge</value>
+  </data>
+  <data name="Speed.ByDirectionTime" xml:space="preserve">
+    <value>Nach Richtung und Tageszeit</value>
+  </data>
+  <data name="Speed.Hours" xml:space="preserve">
+    <value>{0}–{1} Uhr</value>
+  </data>
+  <data name="Speed.Weekdays" xml:space="preserve">
+    <value>Werktags</value>
+  </data>
+  <data name="Speed.Weekend" xml:space="preserve">
+    <value>Wochenende</value>
+  </data>
+  <data name="Speed.ByBandClass" xml:space="preserve">
+    <value>Nach Geschwindigkeit und Fahrzeugklasse</value>
+  </data>
+  <data name="Speed.BandHint" xml:space="preserve">
+    <value>Alle Fahrzeuge mit gemessener Geschwindigkeit, auch Fahrräder; die Kennzahlen oben gelten nur für Kraftfahrzeuge.</value>
+  </data>
+  <data name="Speed.Top5" xml:space="preserve">
+    <value>Die fünf höchsten Geschwindigkeiten</value>
+  </data>
+  <data name="Ops.Coverage" xml:space="preserve">
+    <value>Messabdeckung und Bildqualität pro Tag</value>
+  </data>
+  <data name="Ops.Good" xml:space="preserve">
+    <value>gut</value>
+  </data>
+  <data name="Ops.Degraded" xml:space="preserve">
+    <value>eingeschränkt</value>
+  </data>
+  <data name="Ops.Unusable" xml:space="preserve">
+    <value>unbrauchbar</value>
+  </data>
+  <data name="Ops.StreamDegraded" xml:space="preserve">
+    <value>Stream/Sicht gestört</value>
+  </data>
+  <data name="Ops.CameraOff" xml:space="preserve">
+    <value>Kamera aus</value>
+  </data>
+  <data name="Ops.UnusableHint" xml:space="preserve">
+    <value>„Unbrauchbar“ ist nachts normal: die Bildqualität wird am Kontrast gemessen. „Stream/Sicht gestört“: Bilder kamen, aber mit Aussetzern oder zu langsam, oder nachts verdeckten Regentropfen auf der Scheibe die Straße; diese Minuten zählen nicht als gemessen.</value>
+  </data>
+  <data name="Ops.Periods" xml:space="preserve">
+    <value>Betriebszeiträume</value>
+  </data>
+  <data name="Ops.Start" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="Ops.End" xml:space="preserve">
+    <value>Ende</value>
+  </data>
+  <data name="Ops.Machine" xml:space="preserve">
+    <value>Rechner</value>
+  </data>
+  <data name="Ops.Model" xml:space="preserve">
+    <value>Modell</value>
+  </data>
+  <data name="Ops.Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Ops.Running" xml:space="preserve">
+    <value>läuft (zuletzt {0})</value>
+  </data>
+  <data name="Ops.Events" xml:space="preserve">
+    <value>Ereignisse</value>
+  </data>
+  <data name="Ops.Kind" xml:space="preserve">
+    <value>Art</value>
+  </data>
+  <data name="Ops.Message" xml:space="preserve">
+    <value>Meldung</value>
+  </data>
+  <data name="Ops.ShowInfo" xml:space="preserve">
+    <value>auch Informationen anzeigen</value>
+  </data>
+  <data name="Export.FilePrefix" xml:space="preserve">
+    <value>verkehr</value>
+  </data>
+  <data name="Export.InvalidRange" xml:space="preserve">
+    <value>Wähle einen Zeitraum von höchstens {0} Tagen, dessen Ende nicht vor dem Anfang liegt.</value>
+  </data>
+  <data name="Export.Speed" xml:space="preserve">
+    <value>Geschwindigkeit km/h</value>
+  </data>
+  <data name="Excel.Days" xml:space="preserve">
+    <value>Tage</value>
+  </data>
+  <data name="Excel.Hours" xml:space="preserve">
+    <value>Stunden</value>
+  </data>
+  <data name="Excel.Vehicles" xml:space="preserve">
+    <value>Fahrzeuge</value>
+  </data>
+  <data name="Excel.Notes" xml:space="preserve">
+    <value>Hinweise</value>
+  </data>
+  <data name="Excel.Rain" xml:space="preserve">
+    <value>Niederschlag mm</value>
+  </data>
+  <data name="Excel.Title" xml:space="preserve">
+    <value>Verkehrszählung {0}, {1} bis {2}</value>
+  </data>
+  <data name="Excel.NoteCounter" xml:space="preserve">
+    <value>Gezählt hat der automatische Zähler; gemessen = Anteil der Zeit, in der die Kamera Bilder lieferte.</value>
+  </data>
+  <data name="Excel.NotePerHour" xml:space="preserve">
+    <value>Pro Stunde: bei 100 % „gemessen“ die gezählten Fahrzeuge; bei weniger die in den gemessenen Minuten gezählten Fahrzeuge, auf eine volle Stunde hochgerechnet, für Vergleiche über Lücken hinweg.</value>
+  </data>
+  <data name="Excel.NoteSpeed" xml:space="preserve">
+    <value>Geschwindigkeiten sind statistische Schätzwerte (Maßstab mit Testfahrten abgeglichen; Einzelmessung etwa ±4 %, Mittelwerte etwa ±3 %), kein geeichtes Messverfahren.</value>
+  </data>
+  <data name="Excel.NoteRain" xml:space="preserve">
+    <value>Niederschlag: nächste Station des Deutschen Wetterdienstes (über Bright Sky).</value>
+  </data>
+  <data name="Footer.License" xml:space="preserve">
+    <value>Freie Software unter der GNU AGPL-3.0, ohne jede Gewährleistung</value>
+  </data>
+  <data name="Footer.Source" xml:space="preserve">
+    <value>Quellcode</value>
+  </data>
+</root>

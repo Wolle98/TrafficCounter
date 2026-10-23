@@ -1,0 +1,242 @@
+@page "/period"
+@page "/zeitraum"
+@using System.Globalization
+@inject TrafficQueries Queries
+
+<PageTitle>@L["App.PageTitle", L["Nav.Period"]]</PageTitle>
+
+<h1>@L["Nav.Period"]</h1>
+
+<div class="filters">
+    <DateRange @bind-From="_from" @bind-To="_to" OnApply="LoadAsync" />
+    <label>
+        @L["Period.Grid"]
+        <select @bind="_granularity">
+            <option value="hour">@L["Period.Hours"]</option>
+            <option value="day">@L["Period.Days"]</option>
+        </select>
+    </label>
+    <label>
+        @L["Period.Direction"]
+        <select @bind="_direction">
+            <option value="">@L["Period.Both"]</option>
+            <option value="A">@(_camera?.DirectionA ?? "A")</option>
+            <option value="B">@(_camera?.DirectionB ?? "B")</option>
+        </select>
+    </label>
+    @if (_direction == "")
+    {
+        <label><input type="checkbox" @bind="_sideBySide" /> @L["Period.SideBySide"]</label>
+    }
+    <span class="classes">
+        @foreach ((VehicleClass vehicleClass, _) in TrafficStatistics.Classes)
+        {
+            <label><input type="checkbox" checked="@(!_hidden.Contains(vehicleClass))" @onchange="e => Toggle(vehicleClass, (bool)e.Value!)" /> @L.ClassName(vehicleClass)</label>
+        }
+    </span>
+    <button @onclick="LoadAsync">@L["Common.Show"]</button>
+    <a class="button" href="@CsvLink" download>CSV</a>
+    <a class="button" href="@ExcelLink" download>Excel</a>
+    <button class="secondary" onclick="window.print()">@L["Period.Print"]</button>
+</div>
+
+@if (_error is not null)
+{
+    <p class="error">@_error</p>
+}
+else if (_buckets.Count > 0)
+{
+    <div class="tiles">
+        <div class="tile"><div class="value">@_filtered.Count.ToString("N0", Culture)</div><div class="label">@L["Period.Counted"]</div></div>
+        <div class="tile"><div class="value">@Coverage.ToString("P0", Culture)</div><div class="label">@L["Common.TimeMeasured"]</div></div>
+        <div class="tile"><div class="value">@PerDay</div><div class="label">@L["Period.PerDay"]</div></div>
+    </div>
+
+    @if (_sideBySide && _direction == "" && _camera is not null)
+    {
+        <BarChart Labels="@Labels" Series="@SeriesFor(TravelDirection.A)" SecondSeries="@SeriesFor(TravelDirection.B)"
+                  FirstName="@_camera.DirectionA" SecondName="@_camera.DirectionB" Coverage="@CoverageList" LabelEvery="@LabelEvery" Title="@L["Period.ChartByDirection"]" />
+    }
+    else
+    {
+        <BarChart Labels="@Labels" Series="@SeriesFor(null)" Coverage="@CoverageList" LabelEvery="@LabelEvery" Title="@L["Period.Chart"]" />
+    }
+    @if (_hourlyTooLong)
+    {
+        <p class="hint">@L["Period.DaysOnly"]</p>
+    }
+    @if (_weather.Count > 0)
+    {
+        <BarChart Labels="@Labels" Series="@RainSeries" LabelEvery="@LabelEvery" Height="110" ValueFormat="0.0" Title="@L["Period.RainChart"]" />
+    }
+    <p class="hint">@L["Period.GapHint"]</p>
+
+    @if (_weather.Count > 0)
+    {
+        <h2>@L["Period.RainVsDry"]</h2>
+        <table class="data">
+            <thead><tr><th></th><th>@L["Period.HoursMeasured"]</th><th>@L["Period.VehiclesPerHour"]</th><th>@L["Period.BicyclesPerHour"]</th></tr></thead>
+            <tbody>
+                @foreach ((string label, Func<WeatherRow, bool> condition) in WeatherGroups)
+                {
+                    (double hours, double perHour, double bicycles) = ByWeather(condition);
+                    <tr>
+                        <td>@L[label]</td>
+                        <td class="num">@hours.ToString("0", Culture)</td>
+                        <td class="num">@(hours > 0 ? perHour.ToString("0", Culture) : "–")</td>
+                        <td class="num">@(hours > 0 ? bicycles.ToString("0.0", Culture) : "–")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <p class="hint">@L["Period.RainHint"]</p>
+    }
+
+    <table class="data">
+        <thead><tr><th>@(_size >= TimeSpan.FromDays(1) ? L["Table.Day"] : L["Table.Hour"])</th><th>@L["Table.Vehicles"]</th><th>@L["Table.Measured"]</th><th>@L["Table.PerHour"]</th></tr></thead>
+        <tbody>
+            @foreach (Bucket bucket in _buckets.Where(b => b.Minutes > 0))
+            {
+                <tr>
+                    <td>@L.Date(bucket.Start, _size >= TimeSpan.FromDays(1) ? "Format.DayRow" : "Format.HourRow")</td>
+                    <td class="num">@bucket.Count.ToString("N0", Culture)</td>
+                    <td class="num" title="@L["Table.CoverageHint", bucket.CoveredMinutes, bucket.Minutes]">@bucket.Coverage.ToString("P0", Culture)</td>
+                    @if (bucket.RatePerHour is double rate && IsEstimate(bucket))
+                    {
+                        <td class="num estimate" title="@L["Table.ExtrapolatedHint", bucket.MeasuredCount, bucket.CoveredMinutes]">≈ @rate.ToString("0", Culture)</td>
+                    }
+                    else
+                    {
+                        <td class="num">@(bucket.RatePerHour?.ToString("0", Culture) ?? "–")</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (_buckets.Any(b => b.Minutes > 0 && IsEstimate(b)))
+    {
+        <p class="hint">@L["Table.EstimateFootnote"]</p>
+    }
+}
+
+@code {
+    /// <summary>Part of the bucket was not counted (a gap, or it is still running): its rate is scaled up, an estimate.</summary>
+    private bool IsEstimate(Bucket bucket) => bucket.CoveredMinutes > 0 && bucket.CoveredMinutes < _size.TotalMinutes;
+
+    private static CultureInfo Culture => CultureInfo.CurrentCulture;
+    private CameraInfo? _camera;
+    private DateTime _from = DateTime.Today.AddDays(-6);
+    private DateTime _to = DateTime.Today;
+    private string _granularity = "day";
+    private string _direction = "";
+    private readonly HashSet<VehicleClass> _hidden = [];
+    private bool _sideBySide;
+    private bool _hourlyTooLong;
+    private List<PassageRow> _filtered = [];
+    private List<Bucket> _buckets = [];
+    private List<WeatherRow> _weather = [];
+    private HashSet<DateTime> _covered = [];
+    private TimeSpan _size = TimeSpan.FromDays(1);
+    private string? _error;
+
+    private TimeSpan Size => _granularity == "day" || _hourlyTooLong ? TimeSpan.FromDays(1) : TimeSpan.FromHours(1);
+
+    private IReadOnlyList<string> Labels => [.. _buckets.Select(b => _size >= TimeSpan.FromDays(1) ? L.Date(b.Start, "Format.ChartDay") : b.Start.ToString("HH", Culture))];
+
+    private int LabelEvery => _size >= TimeSpan.FromDays(1) ? Math.Max(1, _buckets.Count / 31) : Math.Max(1, _buckets.Count / 24);
+
+    private IReadOnlyList<ChartSeries> SeriesFor(TravelDirection? direction) => [.. TrafficStatistics.Classes.Select(c =>
+    {
+        Dictionary<DateTime, int> counts = _filtered.Where(p => p.Class == c.Class && (direction is null || p.Direction == direction))
+            .GroupBy(p => TrafficStatistics.Truncate(p.At, _size)).ToDictionary(g => g.Key, g => g.Count());
+        return new ChartSeries(L.ClassName(c.Class), c.Color, [.. _buckets.Select(b => (double)counts.GetValueOrDefault(b.Start))]);
+    })];
+
+    private IReadOnlyList<ChartSeries> RainSeries => [new ChartSeries(L["Period.RainSeries"], "#5b9bd5", [.. _buckets.Select(b =>
+        (double)_weather.Where(w => TrafficStatistics.Truncate(w.Hour, _size) == b.Start).Sum(w => w.PrecipitationMm ?? 0))])];
+
+    private static IEnumerable<(string Label, Func<WeatherRow, bool> Condition)> WeatherGroups =>
+    [
+        ("Period.Dry", w => (w.PrecipitationMm ?? 0) < 0.1f),
+        ("Period.Rain", w => (w.PrecipitationMm ?? 0) >= 0.1f),
+        ("Period.Rain1mm", w => (w.PrecipitationMm ?? 0) >= 1f),
+    ];
+
+    /// <summary>Measured hours, vehicles and bicycles per hour in daytime hours matching the weather condition.</summary>
+    private (double Hours, double PerHour, double Bicycles) ByWeather(Func<WeatherRow, bool> condition)
+    {
+        HashSet<DateTime> hours = [.. _weather.Where(w => w.Hour.Hour is >= 7 and < 20 && condition(w)).Select(w => w.Hour)];
+        double minutes = _covered.Count(m => hours.Contains(TrafficStatistics.Truncate(m, TimeSpan.FromHours(1))));
+        if (minutes < 30)
+        {
+            return (0, 0, 0);
+        }
+
+        List<PassageRow> inHours = [.. _filtered.Where(p => hours.Contains(TrafficStatistics.Truncate(p.At, TimeSpan.FromHours(1))))];
+        return (minutes / 60, inHours.Count * 60 / minutes, inHours.Count(p => p.Class == VehicleClass.Bicycle) * 60 / minutes);
+    }
+
+    private IReadOnlyList<double> CoverageList => [.. _buckets.Select(b => b.Minutes == 0 ? 1 : b.Coverage)];
+
+    private double Coverage => _buckets.Sum(b => b.Minutes) is int total and > 0 ? _buckets.Sum(b => b.CoveredMinutes) / (double)total : 0;
+
+    private string PerDay => _buckets.Sum(b => b.CoveredMinutes) is int covered and > 0
+        ? (_filtered.Count * 1440.0 / covered).ToString("N0", Culture)
+        : "–";
+
+    private string CsvLink => string.Create(CultureInfo.InvariantCulture,
+        $"export.csv?from={_from:yyyy-MM-dd}&to={_to:yyyy-MM-dd}");
+
+    private string ExcelLink => string.Create(CultureInfo.InvariantCulture,
+        $"export.xlsx?from={_from:yyyy-MM-dd}&to={_to:yyyy-MM-dd}");
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private void Toggle(VehicleClass vehicleClass, bool on)
+    {
+        if (on)
+        {
+            _hidden.Remove(vehicleClass);
+        }
+        else
+        {
+            _hidden.Add(vehicleClass);
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _camera ??= await Queries.CurrentCameraAsync();
+            if (_camera is null)
+            {
+                _error = L["Common.NoData"];
+                return;
+            }
+
+            DateTime from = _from.Date;
+            DateTime to = _to.Date.AddDays(1);
+            if (to <= from)
+            {
+                _error = L["Period.EndBeforeStart"];
+                return;
+            }
+
+            List<PassageRow> passages = await Queries.PassagesAsync(_camera.Id, from, to);
+            HashSet<DateTime> covered = TrafficStatistics.CoveredMinutes(await Queries.MinutesAsync(_camera.Id, from, to));
+            _hourlyTooLong = _granularity == "hour" && (to - from).TotalDays > 14;
+            _filtered = [.. passages.Where(p => !_hidden.Contains(p.Class)
+                && (_direction == "" || p.Direction.ToString() == _direction))];
+            _size = Size;
+            _covered = covered;
+            _weather = await Queries.WeatherAsync(from, to);
+            _buckets = TrafficStatistics.Buckets(_filtered, covered, from, to, _size, DateTime.Now);
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = L["Common.DatabaseUnreachable", ex.Message];
+        }
+    }
+}

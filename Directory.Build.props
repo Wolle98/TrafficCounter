@@ -1,0 +1,35 @@
+<Project>
+  <!--
+    The OpenVINO build (-p:InferenceBackend=OpenVino, ADR-0029) and the NVIDIA build (-p:InferenceBackend=Nvidia,
+    ADR-0041) reference a different onnxruntime.dll. Each gets its own bin/obj folders, so the builds never pick up
+    each other's outputs.
+  -->
+  <PropertyGroup Condition="'$(InferenceBackend)' == 'OpenVino'">
+    <BaseIntermediateOutputPath>obj-openvino\</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin-openvino\</BaseOutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(InferenceBackend)' == 'Nvidia'">
+    <BaseIntermediateOutputPath>obj-nvidia\</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin-nvidia\</BaseOutputPath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**;bin-openvino/**;obj-openvino/**;bin-nvidia/**;obj-nvidia/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Authors>Wolle98</Authors>
+    <Product>TrafficCounter</Product>
+    <Copyright>Copyright (C) 2026 Wolle98</Copyright>
+    <!-- One version for all programs (ADR-0038): raise it with every deployment and note the changes in CHANGELOG.md.
+         The build appends the commit ("+<hash>"), so logs and operating periods show the exact state. -->
+    <Version>0.10.0</Version>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/Wolle98/TrafficCounter</RepositoryUrl>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Ground truth format and comparison of counting results against it (reference videos, roadmap 0.7 / 1.15). -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrafficCounter.Core\TrafficCounter.Core.csproj" />
+  </ItemGroup>
+
+</Project>

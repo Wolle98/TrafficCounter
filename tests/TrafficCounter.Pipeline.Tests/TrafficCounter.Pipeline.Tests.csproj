@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TrafficCounter.Pipeline\TrafficCounter.Pipeline.csproj" />
+    <ProjectReference Include="..\..\src\TrafficCounter.Evaluation\TrafficCounter.Evaluation.csproj" />
+  </ItemGroup>
+
+</Project>

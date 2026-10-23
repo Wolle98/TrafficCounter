@@ -1,0 +1,4 @@
+# Python tooling for model export and (stage 3) training. Install into a local venv:
+#   python -m venv .venv
+#   .venv\Scripts\pip install -r requirements.txt
+ultralytics>=8.4.164

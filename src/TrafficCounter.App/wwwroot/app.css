@@ -1,0 +1,154 @@
+:root {
+    --fg: #1d2330;
+    --muted: #5d6675;
+    --line: #e2e6ec;
+    --accent: #2f5d9b;
+    --bg: #f6f7f9;
+    --card: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    color: var(--fg);
+    background: var(--bg);
+}
+
+header.top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.5rem;
+    padding: .7rem 1.5rem;
+    background: var(--accent);
+    color: #fff;
+}
+
+header.top .brand { font-weight: 600; font-size: 1.1rem; }
+
+header.top nav { display: flex; flex-wrap: wrap; gap: .3rem; }
+
+header.top nav a {
+    color: #dfe8f5;
+    text-decoration: none;
+    padding: .3rem .7rem;
+    border-radius: 4px;
+}
+
+header.top nav a.active, header.top nav a:hover { background: rgba(255, 255, 255, .18); color: #fff; }
+
+/* Language selection at the right end of the header. */
+header.top .language { margin-left: auto; }
+header.top .language select {
+    background: rgba(255, 255, 255, .12);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, .35);
+    border-radius: 4px;
+    padding: .25rem .4rem;
+    font: inherit;
+}
+header.top .language option { color: #222; }
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+main { max-width: 1150px; margin: 0 auto; padding: 1rem 1.5rem 3rem; }
+
+footer.bottom { max-width: 1150px; margin: 0 auto; padding: .8rem 1.5rem 1.5rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .8rem; }
+footer.bottom a { color: var(--muted); }
+
+h1 { font-size: 1.5rem; font-weight: 600; margin: .8rem 0 1rem; }
+h2 { font-size: 1.15rem; font-weight: 600; margin: 2rem 0 .6rem; }
+
+.tiles { display: flex; flex-wrap: wrap; gap: .8rem; margin-bottom: 1rem; }
+
+.tile {
+    flex: 1 1 150px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: .8rem 1rem;
+}
+
+.tile .value { font-size: 1.6rem; font-weight: 600; }
+.tile .label { color: var(--muted); font-size: .85rem; }
+.tile.warn { border-color: #e8a33d; background: #fff8ec; }
+
+.chart { width: 100%; height: auto; background: var(--card); border: 1px solid var(--line); border-radius: 6px; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis { fill: var(--muted); font-size: 11px; }
+.chart .missing { fill: #eceff3; }
+.chart .line { fill: none; stroke-width: 2.5; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 1rem; margin: .4rem 0; font-size: .85rem; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: .35rem; vertical-align: -1px; }
+.legend i.line-key { height: 3px; vertical-align: 3px; }
+
+.hint { color: var(--muted); font-size: .85rem; }
+.error { color: #b3261e; font-weight: 600; }
+
+table.data { border-collapse: collapse; width: 100%; background: var(--card); border: 1px solid var(--line); }
+table.data th, table.data td { padding: .35rem .7rem; border-bottom: 1px solid var(--line); text-align: left; }
+table.data th { background: #eef1f5; font-weight: 600; }
+table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data td.estimate { color: var(--muted); font-style: italic; cursor: help; }
+table.data tr.warning td { background: #fff8ec; }
+table.data tr.error td { background: #fdeceb; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: .5rem; }
+
+.filters { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: center; margin-bottom: 1rem; }
+.filters .classes { display: flex; flex-wrap: wrap; gap: .3rem .8rem; font-size: .9rem; }
+.filters input, .filters select, .filters button, .filters .button { font: inherit; padding: .25rem .5rem; }
+.filters button, .filters .button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 4px; cursor: pointer; text-decoration: none;
+}
+
+.heatmap-wrap { overflow-x: auto; }
+table.heatmap { border-collapse: collapse; font-size: .78rem; background: var(--card); }
+table.heatmap th { padding: .2rem .35rem; color: var(--muted); font-weight: 600; }
+table.heatmap td { width: 2.4rem; height: 2rem; text-align: center; border: 2px solid var(--card); font-weight: 600; font-variant-numeric: tabular-nums; }
+table.heatmap td.empty { background: repeating-linear-gradient(135deg, #f2f2f2 0 4px, #e6e6e6 4px 8px); }
+
+/* Scale legend below the heatmap: the colour ramp from 0 to the largest value. */
+.heat-legend { display: flex; align-items: center; gap: .6rem; margin: .6rem 0 0; font-size: .8rem; color: var(--muted); }
+.heat-legend i { display: inline-block; width: 16rem; height: .7rem; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+
+#blazor-error-ui {
+    background: #ffffe0;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, .2);
+    display: none;
+    left: 0;
+    padding: .6rem 1.25rem .7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: .75rem; top: .5rem; }
+
+.filters button.secondary { background: #e4e8ee; color: var(--fg); }
+
+/* Printing (browser "print to PDF" as report): no navigation and controls, charts at full width. */
+@media print {
+    header.top, .filters, #blazor-error-ui { display: none !important; }
+    body { background: #fff; font-size: 11pt; }
+    main { max-width: none; padding: 0; }
+    .tile, .chart, table.data { break-inside: avoid; }
+    h2 { break-after: avoid; }
+}
+
+.date-range { display: flex; flex-wrap: wrap; gap: .4rem .8rem; align-items: center; }
+button.quick { font: inherit; font-size: .85rem; padding: .2rem .55rem; border: 1px solid var(--line); border-radius: 4px;
+         background: var(--card); color: var(--fg); cursor: pointer; }
+button.quick.active, button.quick:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.filters button.quick:not(.active):not(:hover) { background: var(--card); color: var(--fg); }

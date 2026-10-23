@@ -1,0 +1,208 @@
+@page "/"
+@implements IDisposable
+@using System.Globalization
+@inject TrafficQueries Queries
+
+<PageTitle>@L["App.PageTitle", L["Nav.Overview"]]</PageTitle>
+
+<h1>@(IsToday ? L["Home.Today"] : L["Home.Yesterday"]), @L.Date(_day, "Format.DayLong")</h1>
+
+<div class="filters">
+    <button type="button" class="@(IsToday ? "quick active" : "quick")" @onclick="() => ShowAsync(DateTime.Today)">@L["Range.Today"]</button>
+    <button type="button" class="@(IsToday ? "quick" : "quick active")" @onclick="() => ShowAsync(DateTime.Today.AddDays(-1))">@L["Range.Yesterday"]</button>
+</div>
+
+@if (_error is not null)
+{
+    <p class="error">@_error</p>
+}
+else if (_camera is null)
+{
+    <p>@L["Common.Loading"]</p>
+}
+else
+{
+    <div class="tiles">
+        <div class="tile">
+            <div class="value">@_today.Count.ToString("N0", Culture)</div>
+            <div class="label">@(IsToday ? L["Home.SinceMidnight"] : L["Home.WholeDay"])</div>
+        </div>
+        @if (IsToday)
+        {
+            <div class="tile">
+                <div class="value">@_lastHour.ToString("N0", Culture)</div>
+                <div class="label">@L["Home.LastHour"]</div>
+            </div>
+        }
+        @foreach (TravelDirection direction in new[] { TravelDirection.A, TravelDirection.B })
+        {
+            int count = _today.Count(p => p.Direction == direction);
+            <div class="tile">
+                <div class="value">@count.ToString("N0", Culture)</div>
+                <div class="label">@_camera.DirectionName(direction) (@Share(count))</div>
+            </div>
+        }
+        <div class="tile @(CoverageToday < 0.95 ? "warn" : "")">
+            <div class="value">@CoverageToday.ToString("P0", Culture)</div>
+            <div class="label">@L["Common.TimeMeasured"]</div>
+        </div>
+    </div>
+
+    <h2>@L["Home.PerHour"]</h2>
+    <BarChart Labels="@HourLabels" Series="@HourSeries" Line="@TypicalLine" Coverage="@HourCoverage" LabelEvery="2"
+              Title="@L["Home.PerHour"]" />
+    @if (_weather.Count > 0)
+    {
+        <BarChart Labels="@HourLabels" Series="@RainSeries" LabelEvery="2" Height="110" ValueFormat="0.0" Title="@L["Home.RainChart"]" />
+    }
+    <p class="hint">@L["Home.ChartHint", _day.ToString("dddd", Culture)]</p>
+
+    <h2>@L["Home.ByClass"]</h2>
+    <table class="data">
+        <thead><tr><th>@L["Table.Class"]</th><th>@L["Table.Count"]</th><th>@L["Table.Share"]</th><th>@_camera.DirectionA</th><th>@_camera.DirectionB</th></tr></thead>
+        <tbody>
+            @foreach ((VehicleClass vehicleClass, string color) in TrafficStatistics.Classes)
+            {
+                int count = _today.Count(p => p.Class == vehicleClass);
+                if (count == 0)
+                {
+                    continue;
+                }
+
+                <tr>
+                    <td><i class="swatch" style="background:@color"></i>@L.ClassName(vehicleClass)</td>
+                    <td class="num">@count.ToString("N0", Culture)</td>
+                    <td class="num">@Share(count)</td>
+                    <td class="num">@_today.Count(p => p.Class == vehicleClass && p.Direction == TravelDirection.A).ToString("N0", Culture)</td>
+                    <td class="num">@_today.Count(p => p.Class == vehicleClass && p.Direction == TravelDirection.B).ToString("N0", Culture)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (TrafficStatistics.Speeds(_today) is { } speeds)
+    {
+        <h2>@L["Home.SpeedHeading"]</h2>
+        <p>
+            @L["Home.SpeedSummary", speeds.Median.ToString("0", Culture), speeds.V85.ToString("0", Culture),
+                speeds.ShareOver30.ToString("P0", Culture), speeds.ShareOver50.ToString("P0", Culture), speeds.Count.ToString("N0", Culture)]
+            <a href="speed">@L["Home.Details"]</a>
+        </p>
+    }
+
+    @if (IsToday)
+    {
+        <p class="hint">@L["Home.UpdatedAt", _loadedAt.ToString("T", Culture)]</p>
+    }
+}
+
+@code {
+    private static CultureInfo Culture => CultureInfo.CurrentCulture;
+    private CameraInfo? _camera;
+    private List<PassageRow> _today = [];
+    private List<PassageRow> _history = [];
+    private HashSet<DateTime> _coveredToday = [];
+    private HashSet<DateTime> _coveredHistory = [];
+    private List<Bucket> _hours = [];
+    private List<WeatherRow> _weather = [];
+    private int _lastHour;
+    private DateTime _loadedAt;
+    private string? _error;
+    private Timer? _timer;
+
+    private DateTime _day = DateTime.Today;
+
+    private bool IsToday => _day == DateTime.Today;
+
+    private IReadOnlyList<string> HourLabels => [.. Enumerable.Range(0, 24).Select(h => h.ToString(CultureInfo.InvariantCulture))];
+
+    private IReadOnlyList<ChartSeries> HourSeries => [.. TrafficStatistics.Classes.Select(c => new ChartSeries(
+        L.ClassName(c.Class), c.Color, [.. Enumerable.Range(0, 24).Select(h => (double)_today.Count(p => p.Class == c.Class && p.At.Hour == h))]))];
+
+    private ChartLine TypicalLine => new(
+        L["Home.Usual", _day.ToString("dddd", Culture)], "#222",
+        TrafficStatistics.TypicalDay(_history, _coveredHistory, _day.DayOfWeek));
+
+    private IReadOnlyList<ChartSeries> RainSeries => [new ChartSeries(L["Home.RainSeries"], "#5b9bd5",
+        [.. Enumerable.Range(0, 24).Select(h => (double)(_weather.FirstOrDefault(w => w.Hour.Hour == h).PrecipitationMm ?? 0))])];
+
+    private IReadOnlyList<double> HourCoverage => [.. _hours.Select(b => b.Minutes == 0 ? 1 : b.Coverage)];
+
+    private double CoverageToday
+    {
+        get
+        {
+            int elapsed = IsToday ? Math.Max(1, (int)(DateTime.Now - _day).TotalMinutes) : 1440;
+            return Math.Min(1, _coveredToday.Count / (double)elapsed);
+        }
+    }
+
+    private string Share(int count) => _today.Count == 0 ? "–" : (count / (double)_today.Count).ToString("P0", Culture);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        _timer = new Timer(_ => InvokeAsync(async () =>
+        {
+            if (IsToday)
+            {
+                await LoadAsync();
+                StateHasChanged();
+            }
+        }), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+    }
+
+    private async Task ShowAsync(DateTime day)
+    {
+        _day = day;
+        _history = [];
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _camera ??= await Queries.CurrentCameraAsync();
+            if (_camera is null)
+            {
+                _error = L["Common.NoData"];
+                return;
+            }
+
+            DateTime now = DateTime.Now;
+            DateTime day = _day;
+            _today = await Queries.PassagesAsync(_camera.Id, day, day.AddDays(1));
+            _coveredToday = TrafficStatistics.CoveredMinutes(await Queries.MinutesAsync(_camera.Id, day, day.AddDays(1)));
+            _hours = TrafficStatistics.Buckets(_today, _coveredToday, day, day.AddDays(1), TimeSpan.FromHours(1), now);
+            _lastHour = _today.Count(p => p.At > now.AddHours(-1));
+            _weather = await Queries.WeatherAsync(day, day.AddDays(1));
+
+            // The comparison line changes slowly: load it only once, and only the same weekday of the four weeks
+            // before (the line uses nothing else; a seventh of the rows of the whole four weeks).
+            if (_history.Count == 0)
+            {
+                List<PassageRow> history = [];
+                List<MinuteRow> minutes = [];
+                for (int week = 1; week <= 4; week++)
+                {
+                    DateTime earlier = day.AddDays(-7 * week);
+                    history.AddRange(await Queries.PassagesAsync(_camera.Id, earlier, earlier.AddDays(1)));
+                    minutes.AddRange(await Queries.MinutesAsync(_camera.Id, earlier, earlier.AddDays(1)));
+                }
+
+                _history = history;
+                _coveredHistory = TrafficStatistics.CoveredMinutes(minutes);
+            }
+
+            _loadedAt = now;
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = L["Common.DatabaseUnreachable", ex.Message];
+        }
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

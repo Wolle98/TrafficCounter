@@ -1,0 +1,30 @@
+{
+  "//": "Example for the private site configuration (TRAFFICCOUNTER_CONFIG). Copy to the private repository as config/site.json. All positions are fractions of the frame size. No passwords here (ADR-0002). Latitude/Longitude are only used for the sun position (day/dusk/night); one decimal (about 10 km) is enough, more precision is up to you.",
+  "TrafficCounter": {
+    "Site": {
+      "CameraName": "street",
+      "DirectionAName": "towards the centre",
+      "DirectionBName": "towards the main road",
+      "BandTop": 0.32,
+      "BandBottom": 0.78,
+      "LineStart": { "X": 0.5, "Y": 0.44 },
+      "LineEnd": { "X": 0.5, "Y": 0.76 },
+      "IgnoreZones": [ { "X": 0.55, "Y": 0.3, "Width": 0.2, "Height": 0.1 } ],
+      "Latitude": 51.0,
+      "Longitude": 7.0
+    },
+    "Source": {
+      "Usb": {
+        "DeviceIndex": 0,
+        "AutoFocus": false,
+        "Focus": 0,
+        "AutoExposure": false,
+        "Exposure": -7,
+        "Gain": 40
+      }
+    },
+    "Detector": {
+      "ModelPath": "D:\\Code\\TrafficCounter\\models\\yolo11s-1280x384.onnx"
+    }
+  }
+}

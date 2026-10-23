@@ -1,0 +1,21 @@
+<!--
+  Label Studio project configuration for the training samples (ADR-0026, labelling rules: ADR-0039).
+  Paste it under Settings > Labeling Interface > Code. The label values must match CLASSES in labelstudio_common.py.
+-->
+<View>
+  <Header size="6" value="Rules (ADR-0039): two-wheelers with rider in one box · trailer as its own box (Trailer) · tight around the body, not the lit road marking · cut off at the edge: label if about a third is visible, box up to the edge · occluded: visible part · parked vehicles too · no pedestrians · no vehicle: submit empty"/>
+  <Header value="$sample · $view · $lighting"/>
+  <Text name="reasons" value="$reasons"/>
+  <Image name="image" value="$image" zoom="true" zoomControl="true" rotateControl="false"/>
+  <RectangleLabels name="label" toName="image" strokeWidth="2" opacity="0.3">
+    <Label value="Car" background="#1f77b4" hotkey="1"/>
+    <Label value="Van" background="#17becf" hotkey="2"/>
+    <Label value="Truck" background="#d62728" hotkey="3"/>
+    <Label value="Bus" background="#ff7f0e" hotkey="4"/>
+    <Label value="Motorcycle" background="#9467bd" hotkey="5"/>
+    <Label value="Bicycle" background="#2ca02c" hotkey="6"/>
+    <Label value="Agricultural" background="#8c564b" hotkey="7"/>
+    <Label value="Trailer" background="#7f7f7f" hotkey="8"/>
+    <Label value="EScooter" background="#bcbd22" hotkey="9"/>
+  </RectangleLabels>
+</View>

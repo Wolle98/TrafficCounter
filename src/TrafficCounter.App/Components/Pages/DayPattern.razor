@@ -1,0 +1,104 @@
+@page "/day"
+@page "/tag"
+@using System.Globalization
+@inject TrafficQueries Queries
+
+<PageTitle>@L["App.PageTitle", L["Nav.DayPattern"]]</PageTitle>
+
+<h1>@L["Nav.DayPattern"]</h1>
+
+<div class="filters">
+    <DateRange @bind-From="_from" @bind-To="_to" OnApply="LoadAsync" />
+    <label>
+        @L["Day.Weekday"]
+        <select @bind="_day">
+            @foreach (DayOfWeek day in WeekFromMonday)
+            {
+                <option value="@day">@CultureInfo.CurrentCulture.DateTimeFormat.GetDayName(day)</option>
+            }
+        </select>
+    </label>
+    <label>
+        @L["Week.Vehicles"]
+        <select @bind="_filter">
+            <option value="all">@L["Common.All"]</option>
+            <option value="motor">@L["Week.Motor"]</option>
+            <option value="bicycle">@L["Week.Bicycles"]</option>
+            <option value="heavy">@L["Week.Heavy"]</option>
+        </select>
+    </label>
+    <button @onclick="LoadAsync">@L["Common.Show"]</button>
+</div>
+
+@if (_error is not null)
+{
+    <p class="error">@_error</p>
+}
+else if (_heatmap is not null && _labels.Count > 0)
+{
+    <Heatmap Values="@_heatmap" RowLabels="@_labels" />
+    <p class="hint">@L["Day.Hint"]</p>
+}
+else if (_heatmap is not null)
+{
+    <p class="hint">@L["Common.NoData"]</p>
+}
+
+@code {
+    private static readonly DayOfWeek[] WeekFromMonday =
+        [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday];
+
+    private DateTime _from = DateTime.Today.AddDays(-83);
+    private DateTime _to = DateTime.Today;
+    private DayOfWeek _day = DateTime.Today.DayOfWeek;
+    private string _filter = "all";
+    private double?[,]? _heatmap;
+    private List<string> _labels = [];
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            CameraInfo? camera = await Queries.CurrentCameraAsync();
+            if (camera is null)
+            {
+                _error = L["Common.NoData"];
+                return;
+            }
+
+            DateTime from = _from.Date;
+            DateTime to = _to.Date.AddDays(1);
+            List<PassageRow> passages = await Queries.PassagesAsync(camera.Id, from, to);
+            HashSet<DateTime> covered = TrafficStatistics.CoveredMinutes(await Queries.MinutesAsync(camera.Id, from, to));
+            IEnumerable<PassageRow> selected = _filter switch
+            {
+                "motor" => passages.Where(p => TrafficStatistics.IsMotorVehicle(p.Class)),
+                "bicycle" => passages.Where(p => p.Class == VehicleClass.Bicycle),
+                "heavy" => passages.Where(p => p.Class is VehicleClass.Truck or VehicleClass.Bus),
+                _ => passages,
+            };
+            (IReadOnlyList<DateTime> dates, double?[,] values) = TrafficStatistics.DayHeatmap(selected, covered, _day, from, to);
+
+            // Only dates with at least one measured hour; a range reaching back before the counter started has none.
+            List<int> rows = [.. Enumerable.Range(0, dates.Count).Where(r => Enumerable.Range(0, 24).Any(h => values[r, h] is not null))];
+            _heatmap = new double?[rows.Count, 24];
+            for (int i = 0; i < rows.Count; i++)
+            {
+                for (int h = 0; h < 24; h++)
+                {
+                    _heatmap[i, h] = values[rows[i], h];
+                }
+            }
+
+            _labels = [.. rows.Select(r => L.Date(dates[r], "Format.DayPatternRow"))];
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = L["Common.DatabaseUnreachable", ex.Message];
+        }
+    }
+}

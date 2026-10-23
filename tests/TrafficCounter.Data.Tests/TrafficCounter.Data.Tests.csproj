@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TrafficCounter.Data\TrafficCounter.Data.csproj" />
+  </ItemGroup>
+
+</Project>

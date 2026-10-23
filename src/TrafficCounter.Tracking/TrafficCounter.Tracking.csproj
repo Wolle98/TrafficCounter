@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Multi-object tracking (ByteTrack with occlusion stitching, ADR-0008 / ADR-0020). No image dependencies. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrafficCounter.Core\TrafficCounter.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TrafficCounter.Tracking.Tests" />
+  </ItemGroup>
+
+</Project>

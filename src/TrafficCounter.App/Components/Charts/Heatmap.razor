@@ -1,0 +1,52 @@
+@* Weekday × hour heatmap as an HTML table; colour (HeatScale) relative to the largest value, with a scale legend. *@
+@using System.Globalization
+
+<div class="heatmap-wrap">
+    <table class="heatmap">
+        <thead>
+            <tr>
+                <th></th>
+                @for (int h = 0; h < 24; h++)
+                {
+                    <th>@h</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @for (int d = 0; d < Values.GetLength(0); d++)
+            {
+                int day = d;
+                <tr>
+                    <th>@RowLabels[day]</th>
+                    @for (int h = 0; h < Values.GetLength(1); h++)
+                    {
+                        double? value = Values[day, h];
+                        if (value is double v)
+                        {
+                            (string background, string text) = HeatScale.For(v / Math.Max(1, Max));
+                            <td style="background:@background;color:@text" title="@L["Heatmap.Cell", RowLabels[day], h, h + 1, v.ToString("0", CultureInfo.CurrentCulture)]">@v.ToString("0", CultureInfo.CurrentCulture)</td>
+                        }
+                        else
+                        {
+                            <td class="empty" title="@L["Heatmap.NotMeasured"]"></td>
+                        }
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<div class="heat-legend">
+    <span>0</span>
+    <i style="background:@HeatScale.Gradient"></i>
+    <span>@Max.ToString("0", CultureInfo.CurrentCulture) @L["Heatmap.Unit"]</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public double?[,] Values { get; set; } = new double?[0, 0];
+
+    /// <summary>Row names, by default the weekdays from Monday in the current language.</summary>
+    [Parameter] public IReadOnlyList<string> RowLabels { get; set; } = LocalizerExtensions.WeekdaysFromMonday();
+
+    private double Max => Values.Cast<double?>().Where(v => v is not null).Select(v => v!.Value).DefaultIfEmpty(1).Max();
+}

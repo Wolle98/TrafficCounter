@@ -1,0 +1,170 @@
+@page "/speed"
+@page "/geschwindigkeit"
+@using System.Globalization
+@inject TrafficQueries Queries
+
+<PageTitle>@L["App.PageTitle", L["Nav.Speed"]]</PageTitle>
+
+<h1>@L["Nav.Speed"]</h1>
+
+<p class="hint">@L["Speed.Hint"]</p>
+
+<div class="filters">
+    <DateRange @bind-From="_from" @bind-To="_to" OnApply="LoadAsync" />
+    <button @onclick="LoadAsync">@L["Common.Show"]</button>
+</div>
+
+@if (_error is not null)
+{
+    <p class="error">@_error</p>
+}
+else if (_camera is not null && _summary is null)
+{
+    <p>@L["Speed.NoSpeeds"]</p>
+}
+else if (_camera is not null && _summary is not null)
+{
+    <div class="tiles">
+        <div class="tile"><div class="value">@_summary.Median.ToString("0", Culture) km/h</div><div class="label">@L["Speed.Median"]</div></div>
+        <div class="tile"><div class="value">@_summary.V85.ToString("0", Culture) km/h</div><div class="label">@L["Speed.V85"]</div></div>
+        <div class="tile"><div class="value">@_summary.ShareOver30.ToString("P0", Culture)</div><div class="label">@L["Speed.Above", 30]</div></div>
+        <div class="tile"><div class="value">@_summary.ShareOver40.ToString("P0", Culture)</div><div class="label">@L["Speed.Above", 40]</div></div>
+        <div class="tile"><div class="value">@_summary.ShareOver50.ToString("P0", Culture)</div><div class="label">@L["Speed.Above", 50]</div></div>
+    </div>
+
+    <h2>@L["Speed.Distribution"]</h2>
+    <BarChart Labels="@HistogramLabels" Series="@HistogramSeries" LabelEvery="1" ShowLegend="false" Title="@L["Speed.DistributionChart"]" />
+
+    <h2>@L["Speed.ByDirectionTime"]</h2>
+    <table class="data">
+        <thead><tr><th></th><th>@L["Table.Vehicles"]</th><th>@L["Speed.Median"]</th><th>V85</th><th>@L["Speed.AboveShort", 30]</th><th>@L["Speed.AboveShort", 50]</th></tr></thead>
+        <tbody>
+            @foreach ((string label, IEnumerable<PassageRow> rows) in Groups)
+            {
+                if (TrafficStatistics.Speeds(rows) is { } s)
+                {
+                    <tr>
+                        <td>@label</td>
+                        <td class="num">@s.Count.ToString("N0", Culture)</td>
+                        <td class="num">@s.Median.ToString("0", Culture)</td>
+                        <td class="num">@s.V85.ToString("0", Culture)</td>
+                        <td class="num">@s.ShareOver30.ToString("P0", Culture)</td>
+                        <td class="num">@s.ShareOver50.ToString("P0", Culture)</td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+
+    <h2>@L["Speed.ByBandClass"]</h2>
+    <table class="data">
+        <thead>
+            <tr>
+                <th>km/h</th>
+                @foreach ((VehicleClass vehicleClass, _) in ClassesWithSpeeds)
+                {
+                    <th class="num">@L.ClassName(vehicleClass)</th>
+                }
+                <th class="num">@L["Common.All"]</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ((string label, double from, double to) in SpeedBands)
+            {
+                List<PassageRow> inBand = [.. WithSpeed.Where(p => p.SpeedKmh >= from && p.SpeedKmh < to)];
+                <tr>
+                    <td>@label</td>
+                    @foreach ((VehicleClass vehicleClass, _) in ClassesWithSpeeds)
+                    {
+                        int count = inBand.Count(p => p.Class == vehicleClass);
+                        <td class="num">@(count == 0 ? "" : count.ToString("N0", Culture))</td>
+                    }
+                    <td class="num"><strong>@inBand.Count.ToString("N0", Culture)</strong></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p class="hint">@L["Speed.BandHint"]</p>
+
+    <h2>@L["Speed.Top5"]</h2>
+    <table class="data">
+        <thead><tr><th>@L["Table.Time"]</th><th>@L["Table.Vehicle"]</th><th>@L["Table.Direction"]</th><th class="num">km/h</th></tr></thead>
+        <tbody>
+            @foreach (PassageRow passage in WithSpeed.OrderByDescending(p => p.SpeedKmh).Take(5))
+            {
+                <tr>
+                    <td>@L.Date(passage.At, "Format.DateTimeRow")</td>
+                    <td>@L.ClassName(passage.Class)</td>
+                    <td>@_camera.DirectionName(passage.Direction)</td>
+                    <td class="num">@passage.SpeedKmh!.Value.ToString("0", Culture)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private static CultureInfo Culture => CultureInfo.CurrentCulture;
+    private const int BinWidth = 5;
+    private CameraInfo? _camera;
+    private DateTime _from = DateTime.Today.AddDays(-6);
+    private DateTime _to = DateTime.Today;
+    private List<PassageRow> _passages = [];
+    private SpeedSummary? _summary;
+    private string? _error;
+
+    private IEnumerable<PassageRow> WithSpeed => _passages.Where(p => p.SpeedKmh is > 0);
+
+    /// <summary>Classes that have at least one speed in the period, in display order.</summary>
+    private IEnumerable<(VehicleClass Class, string Color)> ClassesWithSpeeds =>
+        TrafficStatistics.Classes.Where(c => WithSpeed.Any(p => p.Class == c.Class));
+
+    /// <summary>5 km/h bands up to 60, then everything faster.</summary>
+    private static IEnumerable<(string Label, double From, double To)> SpeedBands =>
+        [.. Enumerable.Range(0, 12).Select(i => ($"{i * 5}–{(i + 1) * 5}", i * 5.0, (i + 1) * 5.0)), ("≥ 60", 60.0, double.MaxValue)];
+
+    private int[] Histogram => TrafficStatistics.SpeedHistogram(_passages, BinWidth);
+
+    private IReadOnlyList<string> HistogramLabels => [.. Histogram.Select((_, i) =>
+        i == Histogram.Length - 1 ? $"≥{i * BinWidth}" : $"{i * BinWidth}")];
+
+    private IReadOnlyList<ChartSeries> HistogramSeries => [new ChartSeries(L["Speed.Vehicles"], "#4e79a7", [.. Histogram.Select(c => (double)c)])];
+
+    private IEnumerable<(string Label, IEnumerable<PassageRow> Rows)> Groups
+    {
+        get
+        {
+            yield return (_camera!.DirectionA, _passages.Where(p => p.Direction == TravelDirection.A));
+            yield return (_camera!.DirectionB, _passages.Where(p => p.Direction == TravelDirection.B));
+            yield return (L["Speed.Hours", 6, 9], _passages.Where(p => p.At.Hour is >= 6 and < 9));
+            yield return (L["Speed.Hours", 9, 16], _passages.Where(p => p.At.Hour is >= 9 and < 16));
+            yield return (L["Speed.Hours", 16, 20], _passages.Where(p => p.At.Hour is >= 16 and < 20));
+            yield return (L["Speed.Hours", 20, 6], _passages.Where(p => p.At.Hour is >= 20 or < 6));
+            yield return (L["Speed.Weekdays"], _passages.Where(p => p.At.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday)));
+            yield return (L["Speed.Weekend"], _passages.Where(p => p.At.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday));
+        }
+    }
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _camera ??= await Queries.CurrentCameraAsync();
+            if (_camera is null)
+            {
+                _error = L["Common.NoData"];
+                return;
+            }
+
+            _passages = await Queries.PassagesAsync(_camera.Id, _from.Date, _to.Date.AddDays(1));
+            _summary = TrafficStatistics.Speeds(_passages);
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = L["Common.DatabaseUnreachable", ex.Message];
+        }
+    }
+}

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Frame processing chain detection → tracking → counting, shared by the service and the regression runner. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrafficCounter.Vision\TrafficCounter.Vision.csproj" />
+    <ProjectReference Include="..\TrafficCounter.Tracking\TrafficCounter.Tracking.csproj" />
+    <ProjectReference Include="..\TrafficCounter.Counting\TrafficCounter.Counting.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TrafficCounter.Pipeline.Tests" />
+  </ItemGroup>
+
+</Project>

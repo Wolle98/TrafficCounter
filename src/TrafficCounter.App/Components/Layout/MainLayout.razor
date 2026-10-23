@@ -1,0 +1,31 @@
+@inherits LayoutComponentBase
+
+<header class="top">
+    <span class="brand">@L["App.Title"]</span>
+    <nav>
+        <NavLink href="" Match="NavLinkMatch.All">@L["Nav.Overview"]</NavLink>
+        <NavLink href="period">@L["Nav.Period"]</NavLink>
+        <NavLink href="week">@L["Nav.WeekPattern"]</NavLink>
+        <NavLink href="day">@L["Nav.DayPattern"]</NavLink>
+        <NavLink href="speed">@L["Nav.Speed"]</NavLink>
+        <NavLink href="operations">@L["Nav.Operations"]</NavLink>
+    </nav>
+    <LanguageSelect />
+</header>
+
+<main>
+    @Body
+</main>
+
+@* AGPL-3.0 section 13: users of the app over the network get the licence and the source. *@
+<footer class="bottom">
+    Copyright © 2026 Wolle98 ·
+    <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">@L["Footer.License"]</a> ·
+    <a href="https://github.com/Wolle98/TrafficCounter" target="_blank" rel="noopener">@L["Footer.Source"]</a>
+</footer>
+
+<div id="blazor-error-ui" data-nosnippet>
+    @L["Error.Occurred"]
+    <a href="." class="reload">@L["Error.Reload"]</a>
+    <span class="dismiss">🗙</span>
+</div>

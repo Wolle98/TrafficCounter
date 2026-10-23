@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Sets evaluation band, counting line, kerbs and static zones on a still image; writes the private site config. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrafficCounter.Pipeline\TrafficCounter.Pipeline.csproj" />
+  </ItemGroup>
+
+</Project>

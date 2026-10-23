@@ -1,0 +1,45 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore TrafficCounter.sln
+
+      - name: Build
+        run: dotnet build TrafficCounter.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --solution TrafficCounter.sln --configuration Release --no-build
+
+  # Second inference backend (ADR-0029): Intel's OpenVINO runtime instead of DirectML. Separate bin/obj folders,
+  # so it cannot mix with the default build. Tests run on the CPU and therefore work without an Intel GPU.
+  build-openvino:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore TrafficCounter.sln -p:InferenceBackend=OpenVino
+
+      - name: Build
+        run: dotnet build TrafficCounter.sln --configuration Release --no-restore -p:InferenceBackend=OpenVino
+
+      - name: Test
+        run: dotnet test --solution TrafficCounter.sln --configuration Release --no-build -p:InferenceBackend=OpenVino

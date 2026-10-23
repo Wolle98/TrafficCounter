@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- YOLO inference with ONNX Runtime, DirectML with CPU fallback (ADR-0006, ADR-0007). -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrafficCounter.Vision\TrafficCounter.Vision.csproj" />
+  </ItemGroup>
+
+  <!--
+    Inference backend (ADR-0029, ADR-0041): DirectML by default (any DirectX 12 GPU, CPU fallback), Intel OpenVINO for
+    notebooks with Intel graphics/NPU (dotnet build -p:InferenceBackend=OpenVino), or NVIDIA TensorRT/CUDA
+    (-p:InferenceBackend=Nvidia). Each ships its own onnxruntime.dll, so only one of them can be referenced.
+  -->
+  <ItemGroup Condition="'$(InferenceBackend)' != 'OpenVino' and '$(InferenceBackend)' != 'Nvidia'">
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(InferenceBackend)' == 'OpenVino'">
+    <PackageReference Include="Intel.ML.OnnxRuntime.OpenVino" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(InferenceBackend)' == 'OpenVino'">
+    <DefineConstants>$(DefineConstants);OPENVINO</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(InferenceBackend)' == 'Nvidia'">
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu.Windows" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(InferenceBackend)' == 'Nvidia'">
+    <DefineConstants>$(DefineConstants);NVIDIA</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TrafficCounter.Detection.Onnx.Tests" />
+  </ItemGroup>
+
+</Project>

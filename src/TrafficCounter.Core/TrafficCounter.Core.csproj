@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Domain model and image-independent abstractions. Must not reference OpenCV, ONNX or EF Core. -->
+
+</Project>

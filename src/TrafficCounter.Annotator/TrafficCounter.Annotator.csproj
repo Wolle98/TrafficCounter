@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Manual counting of reference videos and marking of test drives; writes "<video>.gt.csv" (roadmap 0.7, ADR-0043). -->
+
+  <PropertyGroup>
+    <!-- Exe, not WinExe: "import" and error messages stay on the console. -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrafficCounter.Vision\TrafficCounter.Vision.csproj" />
+    <ProjectReference Include="..\TrafficCounter.Evaluation\TrafficCounter.Evaluation.csproj" />
+    <!-- "import": hand-counted passages into the database (ADR-0027). -->
+    <ProjectReference Include="..\TrafficCounter.Pipeline\TrafficCounter.Pipeline.csproj" />
+    <ProjectReference Include="..\TrafficCounter.Data\TrafficCounter.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TrafficCounter.Annotator.Tests" />
+  </ItemGroup>
+
+</Project>

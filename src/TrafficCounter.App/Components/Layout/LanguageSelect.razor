@@ -1,0 +1,21 @@
+@* Language selection: the choice is stored in a cookie by /culture, which reloads the current page. *@
+@using System.Globalization
+@inject NavigationManager Navigation
+
+<label class="language">
+    <span class="visually-hidden">@L["Language.Label"]</span>
+    <select aria-label="@L["Language.Label"]" value="@CultureInfo.CurrentUICulture.Name" @onchange="Change">
+        @foreach (CultureInfo culture in AppCultures.Supported)
+        {
+            <option value="@culture.Name">@AppCultures.DisplayName(culture)</option>
+        }
+    </select>
+</label>
+
+@code {
+    private void Change(ChangeEventArgs e)
+    {
+        string page = "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.NavigateTo($"culture?name={Uri.EscapeDataString(e.Value?.ToString() ?? "")}&redirect={Uri.EscapeDataString(page)}", forceLoad: true);
+    }
+}

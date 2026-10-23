@@ -1,0 +1,116 @@
+@page "/operations"
+@page "/betrieb"
+@using System.Globalization
+@inject TrafficQueries Queries
+
+<PageTitle>@L["App.PageTitle", L["Nav.Operations"]]</PageTitle>
+
+<h1>@L["Nav.Operations"]</h1>
+
+<div class="filters">
+    <DateRange @bind-From="_from" @bind-To="_to" OnApply="LoadAsync" />
+    <button @onclick="LoadAsync">@L["Common.Show"]</button>
+</div>
+
+@if (_error is not null)
+{
+    <p class="error">@_error</p>
+}
+else if (_camera is not null)
+{
+    <h2>@L["Ops.Coverage"]</h2>
+    <table class="data">
+        <thead><tr><th>@L["Table.Day"]</th><th>@L["Table.Measured"]</th><th>@L["Ops.Good"]</th><th>@L["Ops.Degraded"]</th><th>@L["Ops.Unusable"]</th><th>@L["Ops.StreamDegraded"]</th><th>@L["Ops.CameraOff"]</th></tr></thead>
+        <tbody>
+            @foreach (IGrouping<DateTime, MinuteRow> day in _minutes.GroupBy(m => m.Start.Date).OrderByDescending(g => g.Key))
+            {
+                int total = day.Key == DateTime.Today ? Math.Max(1, (int)(DateTime.Now - DateTime.Today).TotalMinutes) : 1440;
+                <tr>
+                    <td>@L.Date(day.Key, "Format.DayRow")</td>
+                    <td class="num">@Share(day.Count(m => m.Source == SourceState.Ok), total)</td>
+                    <td class="num">@Share(day.Count(m => m.Quality == QualityLevel.Good), total)</td>
+                    <td class="num">@Share(day.Count(m => m.Quality == QualityLevel.Degraded), total)</td>
+                    <td class="num">@Share(day.Count(m => m.Quality == QualityLevel.Unusable), total)</td>
+                    <td class="num">@Share(day.Count(m => m.Source == SourceState.Degraded), total)</td>
+                    <td class="num">@Share(day.Count(m => m.Source == SourceState.Unavailable), total)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p class="hint">@L["Ops.UnusableHint"]</p>
+
+    <h2>@L["Ops.Periods"]</h2>
+    <table class="data">
+        <thead><tr><th>@L["Ops.Start"]</th><th>@L["Ops.End"]</th><th>@L["Ops.Machine"]</th><th>@L["Ops.Model"]</th><th>@L["Ops.Version"]</th></tr></thead>
+        <tbody>
+            @foreach (PeriodRow period in _periods)
+            {
+                <tr>
+                    <td>@L.Date(period.Started, "Format.DateTimeShort")</td>
+                    <td>@(period.Ended is DateTime ended ? L.Date(ended, "Format.DateTimeShort") : L["Ops.Running", period.LastHeartbeat.ToString("t", Culture)])</td>
+                    <td>@period.Machine</td>
+                    <td>@period.Model</td>
+                    <td>@ShortVersion(period.AppVersion)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h2>@L["Ops.Events"]</h2>
+    <table class="data">
+        <thead><tr><th>@L["Table.Time"]</th><th>@L["Ops.Kind"]</th><th>@L["Ops.Message"]</th></tr></thead>
+        <tbody>
+            @foreach (EventRow e in _events.Where(e => _showInfo || e.Severity != EventSeverity.Information))
+            {
+                <tr class="@e.Severity.ToString().ToLowerInvariant()">
+                    <td>@L.Date(e.At, "Format.DateTimeSeconds")</td>
+                    <td>@e.Kind</td>
+                    <td>@e.Message</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <label><input type="checkbox" @bind="_showInfo" /> @L["Ops.ShowInfo"]</label>
+}
+
+@code {
+    private static CultureInfo Culture => CultureInfo.CurrentCulture;
+    private CameraInfo? _camera;
+    private DateTime _from = DateTime.Today.AddDays(-6);
+    private DateTime _to = DateTime.Today;
+    private List<MinuteRow> _minutes = [];
+    private List<PeriodRow> _periods = [];
+    private List<EventRow> _events = [];
+    private bool _showInfo;
+    private string? _error;
+
+    private static string Share(int count, int total) => (count / (double)total).ToString("P0", Culture);
+
+    private static string ShortVersion(string version) => version.Split('+') is [string number, string commit] ? $"{number} ({commit[..Math.Min(7, commit.Length)]})" : version;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _camera ??= await Queries.CurrentCameraAsync();
+            if (_camera is null)
+            {
+                _error = L["Common.NoData"];
+                return;
+            }
+
+            DateTime from = _from.Date;
+            DateTime to = _to.Date.AddDays(1);
+            _minutes = await Queries.MinutesAsync(_camera.Id, from, to);
+            _periods = await Queries.PeriodsAsync(_camera.Id, from, to);
+            _events = await Queries.EventsAsync(_camera.Id, from, to);
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = L["Common.DatabaseUnreachable", ex.Message];
+        }
+    }
+}

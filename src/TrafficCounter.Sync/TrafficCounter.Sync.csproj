@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Sets up the PostgreSQL database and synchronises it with SQL Server (ADR-0030). -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrafficCounter.Data\TrafficCounter.Data.csproj" />
+  </ItemGroup>
+
+</Project>

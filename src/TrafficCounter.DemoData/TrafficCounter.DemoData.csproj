@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Fills a separate demo database with synthetic traffic (for GUI and report development, stage 4). -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrafficCounter.Data\TrafficCounter.Data.csproj" />
+  </ItemGroup>
+
+</Project>

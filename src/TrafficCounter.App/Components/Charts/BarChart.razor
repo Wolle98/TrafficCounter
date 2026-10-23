@@ -1,0 +1,158 @@
+@* Stacked bar chart as plain SVG, with an optional comparison line and grey background where data is missing. *@
+@using System.Globalization
+
+<svg class="chart" viewBox="0 0 @Width @Height" role="img" aria-label="@Title">
+    @if (Labels.Count > 0)
+    {
+        @* Grid and y axis *@
+        @foreach (double tick in Ticks())
+        {
+            double y = Y(tick);
+            <line x1="@F(Left)" x2="@F(Width - Right)" y1="@F(y)" y2="@F(y)" class="grid" />
+            <SvgLabel X="@(Left - 6)" Y="@(y + 4)" Anchor="end" Text="@tick.ToString("0", CultureInfo.CurrentCulture)" />
+        }
+
+        @for (int i = 0; i < Labels.Count; i++)
+        {
+            int index = i;
+            double x = Left + (index * Slot);
+            if (Coverage is { } coverage && index < coverage.Count && coverage[index] < 0.97)
+            {
+                <rect x="@F(x)" y="@F(Top)" width="@F(Slot)" height="@F(PlotHeight)" class="missing">
+                    <title>@L["Chart.PartlyMeasured", Labels[index], (coverage[index] * 100).ToString("0", CultureInfo.CurrentCulture)]</title>
+                </rect>
+            }
+
+            foreach ((IReadOnlyList<ChartSeries> stack, double offset, double width, double opacity, string group) in Stacks)
+            {
+                double baseline = 0;
+                foreach (ChartSeries series in stack)
+                {
+                    double value = index < series.Values.Count ? series.Values[index] : 0;
+                    if (value <= 0)
+                    {
+                        continue;
+                    }
+
+                    double top = Y(baseline + value);
+                    <rect x="@F(x + (Slot * offset))" y="@F(top)" width="@F(Slot * width)" height="@F(Y(baseline) - top)" fill="@series.Color" fill-opacity="@F(opacity)">
+                        <title>@Labels[index] – @group@series.Name: @value.ToString(ValueFormat, CultureInfo.CurrentCulture)</title>
+                    </rect>
+                    baseline += value;
+                }
+            }
+
+            if (LabelEvery > 0 && index % LabelEvery == 0)
+            {
+                <SvgLabel X="@(x + (Slot / 2))" Y="@(Height - 6)" Text="@Labels[index]" />
+            }
+        }
+
+        @if (Line is { } line)
+        {
+            <polyline points="@LinePoints(line)" class="line" stroke="@line.Color" />
+        }
+    }
+</svg>
+@if (ShowLegend)
+{
+    <div class="legend">
+        @foreach (ChartSeries series in Series.Where(s => s.Values.Any(v => v > 0)))
+        {
+            <span><i style="background:@series.Color"></i>@series.Name</span>
+        }
+        @if (Line is { } line)
+        {
+            <span><i class="line-key" style="background:@line.Color"></i>@line.Name</span>
+        }
+        @if (SecondSeries is not null)
+        {
+            <span>@L["Chart.SideBySide", FirstName, SecondName]</span>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<string> Labels { get; set; } = [];
+
+    [Parameter, EditorRequired] public IReadOnlyList<ChartSeries> Series { get; set; } = [];
+
+    /// <summary>Optional second stack drawn right of each bar (lighter), e.g. the other direction.</summary>
+    [Parameter] public IReadOnlyList<ChartSeries>? SecondSeries { get; set; }
+
+    [Parameter] public string FirstName { get; set; } = "";
+
+    [Parameter] public string SecondName { get; set; } = "";
+
+    /// <summary>Optional line on top of the bars, e.g. the usual value; gaps where null.</summary>
+    [Parameter] public ChartLine? Line { get; set; }
+
+    /// <summary>Measured share of each bar's time span (0..1); bars below 1 get a grey background.</summary>
+    [Parameter] public IReadOnlyList<double>? Coverage { get; set; }
+
+    [Parameter] public string Title { get; set; } = "";
+
+    [Parameter] public int LabelEvery { get; set; } = 1;
+
+    [Parameter] public bool ShowLegend { get; set; } = true;
+
+    [Parameter] public string ValueFormat { get; set; } = "0";
+
+    [Parameter] public double Height { get; set; } = 260;
+
+    private const double Width = 900;
+    private const double Left = 44;
+    private const double Right = 8;
+    private const double Top = 10;
+    private const double Bottom = 24;
+
+    private double PlotHeight => Height - Top - Bottom;
+
+    private double Slot => (Width - Left - Right) / Math.Max(1, Labels.Count);
+
+    /// <summary>One stack per slot, or two side by side: series, x offset and width (share of the slot), opacity, name.</summary>
+    private IEnumerable<(IReadOnlyList<ChartSeries> Stack, double Offset, double Width, double Opacity, string Group)> Stacks =>
+        SecondSeries is null
+            ? [(Series, 0.1, 0.8, 1.0, "")]
+            : [(Series, 0.08, 0.42, 1.0, FirstName + ", "), (SecondSeries, 0.5, 0.42, 0.55, SecondName + ", ")];
+
+    private double Max
+    {
+        get
+        {
+            double bars = Stacks.SelectMany(s => Enumerable.Range(0, Labels.Count)
+                    .Select(i => s.Stack.Sum(series => i < series.Values.Count ? Math.Max(0, series.Values[i]) : 0)))
+                .DefaultIfEmpty(0).Max();
+            double line = Line?.Values.Where(v => v is not null).Select(v => v!.Value).DefaultIfEmpty(0).Max() ?? 0;
+            return Math.Max(1, Math.Max(bars, line));
+        }
+    }
+
+    private double Step
+    {
+        get
+        {
+            double raw = Max / 5;
+            double magnitude = Math.Pow(10, Math.Floor(Math.Log10(raw)));
+            return new[] { 1, 2, 5, 10 }.Select(f => f * magnitude).First(s => s >= raw);
+        }
+    }
+
+    private IEnumerable<double> Ticks()
+    {
+        double step = Step;
+        for (double t = 0; t <= Max + (step * 0.01); t += step)
+        {
+            yield return t;
+        }
+    }
+
+    private double Y(double value) => Top + PlotHeight - (value / (Math.Ceiling(Max / Step) * Step) * PlotHeight);
+
+    private string LinePoints(ChartLine line) => string.Join(' ', line.Values
+        .Select((v, i) => (v, i))
+        .Where(p => p.v is not null)
+        .Select(p => $"{F(Left + (p.i * Slot) + (Slot / 2))},{F(Y(p.v!.Value))}"));
+
+    private static string F(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+}
