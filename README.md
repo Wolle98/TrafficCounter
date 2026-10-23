@@ -9,7 +9,7 @@ https://github.com/user-attachments/assets/343086eb-fa56-4a0f-ac59-a7a42d34fc20
 
 Counting road traffic with a webcam or IP camera: vehicle counts per direction and vehicle class, trailers, speed, and an analysis app in the browser. The data goes to SQL Server or PostgreSQL.
 
-Built with C# / .NET 10, OpenCvSharp, ONNX Runtime (YOLO11; DirectML, OpenVINO or CPU), EF Core and Blazor.
+Built with C# / .NET 10, OpenCvSharp, ONNX Runtime (YOLO11; DirectML, OpenVINO, TensorRT/CUDA or CPU), EF Core, Blazor and Avalonia.
 
 > **Privacy by design:** in normal operation no images are stored, only anonymous passage events (time, direction, class, speed). Reference recordings exist only as an explicit, time-limited mode and go to a separate private repository. See [ADR-0005](docs/adr/0005-privacy.md).
 
@@ -19,7 +19,7 @@ Built with C# / .NET 10, OpenCvSharp, ONNX Runtime (YOLO11; DirectML, OpenVINO o
   - Waiting, overtaking and oncoming traffic as well as occlusion are handled ([ADR-0020](docs/adr/0020-local-traffic-situation.md)).
   - Trailers count with their towing vehicle.
   - Parked cars in driveways are left out by ignore zones ([ADR-0025](docs/adr/0025-ignore-zones.md)).
-- **Vehicle classes:** car, truck, bus, motorcycle, bicycle/e-scooter, agricultural ([ADR-0013](docs/adr/0013-vehicle-classes.md)). Vans need an own model (stage 3); the COCO model counts them as cars or trucks.
+- **Vehicle classes:** car, van, truck, bus, motorcycle, bicycle, e-scooter, agricultural ([ADR-0013](docs/adr/0013-vehicle-classes.md)). The pretrained COCO model knows neither vans nor e-scooters; an own model fine-tuned with `tools/training` (stage 3) adds them. Trained weights are not published.
 - **Day and night:** separate confidence thresholds at night, from the sun position ([ADR-0028](docs/adr/0028-night-thresholds.md)).
 - **Image quality:** monitoring per minute ([ADR-0023](docs/adr/0023-weather-and-image-quality.md), [ADR-0024](docs/adr/0024-operations-log-and-logging.md)).
 - **Camera position check:** against a reference of static image features ([ADR-0019](docs/adr/0019-camera-position-monitoring.md)).
@@ -34,12 +34,13 @@ Built with C# / .NET 10, OpenCvSharp, ONNX Runtime (YOLO11; DirectML, OpenVINO o
   - pages: today/yesterday overview, periods with quick selection, both directions side by side, weekly heatmap, speed distribution, operations;
   - exports: CSV, Excel, printable view;
   - English and German, further languages by adding one resource file ([ADR-0037](docs/adr/0037-multilingual-analysis-app.md)).
-- **Accuracy:** about 94 % on 653 hand-counted vehicles in reference videos (day, backlight, dusk, night), with no wrong directions. The remaining misses are mostly e-scooters and cyclists the COCO model does not recognise; own training is stage 3. Strong afternoon backlight costs more: 86 % in one fully counted backlight hour.
+- **Accuracy:** with the COCO model about 94 % on 653 hand-counted vehicles in reference videos (day, backlight, dusk, night), with no wrong directions; the misses were mostly e-scooters and cyclists. On four later hand-counted hours with 385 vehicles, the own model counted 373 of them, the COCO model 316. Strong afternoon backlight costs more.
 
 ## Hardware and deployment decisions
 
 - **Development machine with an NVIDIA/AMD GPU:** ONNX Runtime with DirectML ([ADR-0007](docs/adr/0007-hardware-acceleration.md)).
-- **24/7 operation on a notebook with Intel integrated graphics:** OpenVINO build (`-p:InferenceBackend=OpenVino`, [ADR-0029](docs/adr/0029-computing-load.md)). Everything falls back to the CPU.
+- **24/7 operation on a notebook with Intel integrated graphics:** OpenVINO build (`-p:InferenceBackend=OpenVino`, [ADR-0029](docs/adr/0029-computing-load.md)).
+- **NVIDIA graphics cards:** TensorRT/CUDA build (`-p:InferenceBackend=Nvidia`, [ADR-0041](docs/adr/0041-tensorrt-backend.md)), about 1.7 times as fast as DirectML with the same counts. Everything falls back to the CPU.
 - **Low load:** about 25 ms per detector run on an Intel Iris Xe. The load is configurable:
   - processing frame rate independent of the camera (`MaxFps`);
   - a motion gate skips the detector on still images;
@@ -53,7 +54,7 @@ Built with C# / .NET 10, OpenCvSharp, ONNX Runtime (YOLO11; DirectML, OpenVINO o
   - recorded by the running service on a schedule, without interrupting counting ([ADR-0032](docs/adr/0032-recordings-by-the-service.md));
   - frames go straight to the hardware encoder of the GPU (Intel Quick Sync, NVENC) via ffmpeg;
   - H.264 keeps an hour at about 0.5–1.5 GB ([ADR-0031](docs/adr/0031-h264-reference-videos.md)).
-- **Camera:** USB webcam (UVC) via DirectShow, selected by name, with fixed focus and 30 fps ([ADR-0017](docs/adr/0017-camera-and-night-operation.md)). RTSP IP cameras are supported as well.
+- **Camera:** RTSP IP camera or USB webcam (UVC, via DirectShow, selected by name, fixed focus; [ADR-0017](docs/adr/0017-camera-and-night-operation.md)). For an IP camera with day/night scenes, the service can keep the scene times in step with sunrise and sunset ([ADR-0042](docs/adr/0042-camera-scene-times.md)).
 
 ## Prerequisites
 
@@ -69,6 +70,7 @@ Built with C# / .NET 10, OpenCvSharp, ONNX Runtime (YOLO11; DirectML, OpenVINO o
 ```powershell
 dotnet build TrafficCounter.sln                              # DirectML build (NVIDIA/AMD GPU or CPU)
 dotnet build TrafficCounter.sln -p:InferenceBackend=OpenVino # OpenVINO build (Intel GPU/NPU or CPU)
+dotnet build TrafficCounter.sln -p:InferenceBackend=Nvidia   # TensorRT/CUDA build (NVIDIA GPU or CPU)
 dotnet test --solution TrafficCounter.sln                    # SQL tests need TRAFFICCOUNTER_TEST_DB
 ```
 
@@ -127,6 +129,10 @@ The tools rely on these paths in it:
 - `models/`.
 
 Passwords (database, RTSP) never go into either repository; they are kept in environment variables or user secrets, e.g. `TRAFFICCOUNTER_PG_PASSWORD`.
+
+## Issues and contributions
+
+This repository receives one commit per version, taken from a private working repository after an automatic check for private data ([ADR-0045](docs/adr/0045-public-snapshots.md)). Bug reports and ideas are welcome as issues here; pull requests are welcome too, but are carried over into the working repository by hand and appear here with the next version.
 
 ## Documentation
 

@@ -4,6 +4,12 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.10.1] – 2026-10-23
+
+### Changed
+
+- README brought up to date: own model and its classes, NVIDIA build, IP camera with scene times, how issues and contributions reach the project.
+
 ## [0.10.0] – 2026-10-23
 
 First public version.
