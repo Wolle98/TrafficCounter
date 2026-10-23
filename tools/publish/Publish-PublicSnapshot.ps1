@@ -28,7 +28,10 @@ param(
     [string] $PrivateRoot = $env:TRAFFICCOUNTER_PRIVATE,
 
     # Pushes branch and tag of the public clone after the commit.
-    [switch] $Push
+    [switch] $Push,
+
+    # Confirms that commits made directly in the public repository are already in the working repository.
+    [switch] $PublicEditsCarriedOver
 )
 
 $ErrorActionPreference = 'Stop'
@@ -126,6 +129,21 @@ Write-Host "$Tag checked against $($patterns.Count) patterns: clean."
 
 # --- Commit in the public clone ---------------------------------------------------------------------------------
 if (git -C $PublicRepository status --porcelain) { throw "$PublicRepository has uncommitted changes." }
+
+# Commits made directly in the public repository (e.g. an edit on GitHub) would be overwritten by the snapshot:
+# carry them over into the working repository first, then confirm with -PublicEditsCarriedOver.
+if (git -C $PublicRepository remote) {
+    git -C $PublicRepository pull -q --ff-only
+    if ($LASTEXITCODE -ne 0) { throw "Could not fast-forward $PublicRepository." }
+}
+$lastSnapshot = git -C $PublicRepository tag --list 'v*' --sort=-v:refname | Select-Object -First 1
+if ($lastSnapshot) {
+    $edits = git -C $PublicRepository log --format='%h %s' "$lastSnapshot..HEAD"
+    if ($edits -and -not $PublicEditsCarriedOver) {
+        $edits | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+        throw "The public repository has commits after $lastSnapshot (above). Carry them over into the working repository, tag again and pass -PublicEditsCarriedOver."
+    }
+}
 
 Get-ChildItem $PublicRepository -Force | Where-Object Name -ne '.git' | Remove-Item -Recurse -Force
 Copy-Item (Join-Path $snapshot '*') $PublicRepository -Recurse -Force

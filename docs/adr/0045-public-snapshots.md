@@ -31,3 +31,7 @@ Option 3.
 - Positive: no history rewrite, no force push, all tags and issue references of the working repository stay valid.
 - Negative: the public history is coarse (one commit per version), and outside contributions need a manual round trip.
 - Negative: the pattern check only finds what is listed; descriptions of the site still need a human eye when a version adds documentation.
+
+## Implementation note (2026-10-23)
+
+Edits made directly in the public repository (for example a file uploaded through the GitHub web editor, like the README video) would be overwritten by the next snapshot. The script pulls the public clone and stops if there are commits after the last snapshot tag, until they have been carried over into the working repository and `-PublicEditsCarriedOver` confirms it.

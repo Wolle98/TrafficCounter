@@ -4,6 +4,18 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.10.2] – 2026-10-23
+
+### Added
+
+- `AGENTS.md` pointing other coding agents to `CLAUDE.md`.
+
+### Changed
+
+- README video uploaded again in the public repository.
+- `Publish-PublicSnapshot.ps1` stops if the public repository has commits after the last snapshot that are not yet in the working repository.
+- Roadmap: the own model is live since 0.8.0; its class `Trailer` stays unmapped, so trailer boxes are never counted.
+
 ## [0.10.1] – 2026-10-23
 
 ### Changed
