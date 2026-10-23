@@ -4,6 +4,16 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.10.3] – 2026-10-23
+
+### Changed
+
+- Analysis app: percentages with two decimals (also in the Excel export), so a small share such as the vehicles above 50 km/h no longer shows as 0 % next to the fastest vehicles.
+
+### Fixed
+
+- Bug issue form: "None" is reserved in GitHub dropdowns; the option is now "No impact".
+
 ## [0.10.2] – 2026-10-23
 
 ### Added

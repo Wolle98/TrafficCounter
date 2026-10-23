@@ -80,7 +80,7 @@ public static class ExcelReport
                 }
 
                 sheet.Cell(r, c).Value = bucket.Coverage;
-                sheet.Cell(r, c++).Style.NumberFormat.Format = "0%";
+                sheet.Cell(r, c++).Style.NumberFormat.Format = "0.00%";
                 if (bucket.RatePerHour is double rate)
                 {
                     sheet.Cell(r, c).Value = Math.Round(rate, 1);

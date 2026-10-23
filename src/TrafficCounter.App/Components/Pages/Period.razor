@@ -48,7 +48,7 @@ else if (_buckets.Count > 0)
 {
     <div class="tiles">
         <div class="tile"><div class="value">@_filtered.Count.ToString("N0", Culture)</div><div class="label">@L["Period.Counted"]</div></div>
-        <div class="tile"><div class="value">@Coverage.ToString("P0", Culture)</div><div class="label">@L["Common.TimeMeasured"]</div></div>
+        <div class="tile"><div class="value">@Coverage.ToString("P2", Culture)</div><div class="label">@L["Common.TimeMeasured"]</div></div>
         <div class="tile"><div class="value">@PerDay</div><div class="label">@L["Period.PerDay"]</div></div>
     </div>
 
@@ -100,7 +100,7 @@ else if (_buckets.Count > 0)
                 <tr>
                     <td>@L.Date(bucket.Start, _size >= TimeSpan.FromDays(1) ? "Format.DayRow" : "Format.HourRow")</td>
                     <td class="num">@bucket.Count.ToString("N0", Culture)</td>
-                    <td class="num" title="@L["Table.CoverageHint", bucket.CoveredMinutes, bucket.Minutes]">@bucket.Coverage.ToString("P0", Culture)</td>
+                    <td class="num" title="@L["Table.CoverageHint", bucket.CoveredMinutes, bucket.Minutes]">@bucket.Coverage.ToString("P2", Culture)</td>
                     @if (bucket.RatePerHour is double rate && IsEstimate(bucket))
                     {
                         <td class="num estimate" title="@L["Table.ExtrapolatedHint", bucket.MeasuredCount, bucket.CoveredMinutes]">≈ @rate.ToString("0", Culture)</td>

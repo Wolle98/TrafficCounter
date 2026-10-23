@@ -84,7 +84,7 @@ else if (_camera is not null)
     private bool _showInfo;
     private string? _error;
 
-    private static string Share(int count, int total) => (count / (double)total).ToString("P0", Culture);
+    private static string Share(int count, int total) => (count / (double)total).ToString("P2", Culture);
 
     private static string ShortVersion(string version) => version.Split('+') is [string number, string commit] ? $"{number} ({commit[..Math.Min(7, commit.Length)]})" : version;
 

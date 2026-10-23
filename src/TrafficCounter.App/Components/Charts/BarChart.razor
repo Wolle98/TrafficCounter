@@ -19,7 +19,7 @@
             if (Coverage is { } coverage && index < coverage.Count && coverage[index] < 0.97)
             {
                 <rect x="@F(x)" y="@F(Top)" width="@F(Slot)" height="@F(PlotHeight)" class="missing">
-                    <title>@L["Chart.PartlyMeasured", Labels[index], (coverage[index] * 100).ToString("0", CultureInfo.CurrentCulture)]</title>
+                    <title>@L["Chart.PartlyMeasured", Labels[index], (coverage[index] * 100).ToString("0.00", CultureInfo.CurrentCulture)]</title>
                 </rect>
             }
 

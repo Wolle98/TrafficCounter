@@ -27,9 +27,9 @@ else if (_camera is not null && _summary is not null)
     <div class="tiles">
         <div class="tile"><div class="value">@_summary.Median.ToString("0", Culture) km/h</div><div class="label">@L["Speed.Median"]</div></div>
         <div class="tile"><div class="value">@_summary.V85.ToString("0", Culture) km/h</div><div class="label">@L["Speed.V85"]</div></div>
-        <div class="tile"><div class="value">@_summary.ShareOver30.ToString("P0", Culture)</div><div class="label">@L["Speed.Above", 30]</div></div>
-        <div class="tile"><div class="value">@_summary.ShareOver40.ToString("P0", Culture)</div><div class="label">@L["Speed.Above", 40]</div></div>
-        <div class="tile"><div class="value">@_summary.ShareOver50.ToString("P0", Culture)</div><div class="label">@L["Speed.Above", 50]</div></div>
+        <div class="tile"><div class="value">@_summary.ShareOver30.ToString("P2", Culture)</div><div class="label">@L["Speed.Above", 30]</div></div>
+        <div class="tile"><div class="value">@_summary.ShareOver40.ToString("P2", Culture)</div><div class="label">@L["Speed.Above", 40]</div></div>
+        <div class="tile"><div class="value">@_summary.ShareOver50.ToString("P2", Culture)</div><div class="label">@L["Speed.Above", 50]</div></div>
     </div>
 
     <h2>@L["Speed.Distribution"]</h2>
@@ -48,8 +48,8 @@ else if (_camera is not null && _summary is not null)
                         <td class="num">@s.Count.ToString("N0", Culture)</td>
                         <td class="num">@s.Median.ToString("0", Culture)</td>
                         <td class="num">@s.V85.ToString("0", Culture)</td>
-                        <td class="num">@s.ShareOver30.ToString("P0", Culture)</td>
-                        <td class="num">@s.ShareOver50.ToString("P0", Culture)</td>
+                        <td class="num">@s.ShareOver30.ToString("P2", Culture)</td>
+                        <td class="num">@s.ShareOver50.ToString("P2", Culture)</td>
                     </tr>
                 }
             }

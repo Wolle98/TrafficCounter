@@ -30,7 +30,7 @@ body:
     attributes:
       label: Impact on stored counting data
       options:
-        - None
+        - No impact
         - New data affected
         - Already stored data affected
         - Unknown

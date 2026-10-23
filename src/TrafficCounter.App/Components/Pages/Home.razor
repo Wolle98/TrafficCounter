@@ -43,7 +43,7 @@ else
             </div>
         }
         <div class="tile @(CoverageToday < 0.95 ? "warn" : "")">
-            <div class="value">@CoverageToday.ToString("P0", Culture)</div>
+            <div class="value">@CoverageToday.ToString("P2", Culture)</div>
             <div class="label">@L["Common.TimeMeasured"]</div>
         </div>
     </div>
@@ -85,7 +85,7 @@ else
         <h2>@L["Home.SpeedHeading"]</h2>
         <p>
             @L["Home.SpeedSummary", speeds.Median.ToString("0", Culture), speeds.V85.ToString("0", Culture),
-                speeds.ShareOver30.ToString("P0", Culture), speeds.ShareOver50.ToString("P0", Culture), speeds.Count.ToString("N0", Culture)]
+                speeds.ShareOver30.ToString("P2", Culture), speeds.ShareOver50.ToString("P2", Culture), speeds.Count.ToString("N0", Culture)]
             <a href="speed">@L["Home.Details"]</a>
         </p>
     }
@@ -137,7 +137,7 @@ else
         }
     }
 
-    private string Share(int count) => _today.Count == 0 ? "–" : (count / (double)_today.Count).ToString("P0", Culture);
+    private string Share(int count) => _today.Count == 0 ? "–" : (count / (double)_today.Count).ToString("P2", Culture);
 
     protected override async Task OnInitializedAsync()
     {
