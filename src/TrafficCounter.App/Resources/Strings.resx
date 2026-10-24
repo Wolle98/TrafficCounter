@@ -446,10 +446,10 @@
     <value>good</value>
   </data>
   <data name="Ops.Degraded" xml:space="preserve">
-    <value>limited</value>
+    <value>okay</value>
   </data>
   <data name="Ops.Unusable" xml:space="preserve">
-    <value>unusable</value>
+    <value>limited</value>
   </data>
   <data name="Ops.StreamDegraded" xml:space="preserve">
     <value>stream or view impaired</value>
@@ -458,7 +458,7 @@
     <value>camera off</value>
   </data>
   <data name="Ops.UnusableHint" xml:space="preserve">
-    <value>“Unusable” is normal at night: image quality is measured by contrast. “Stream or view impaired”: frames arrived, but with gaps or too slowly, or raindrops on the pane hid the road at night; these minutes do not count as measured.</value>
+    <value>“Limited” is normal at night: image quality is measured by contrast; these minutes still count as measured. “Stream or view impaired”: frames arrived, but with gaps or too slowly, or raindrops on the pane hid the road at night; these minutes do not count as measured.</value>
   </data>
   <data name="Ops.Periods" xml:space="preserve">
     <value>Operating periods</value>

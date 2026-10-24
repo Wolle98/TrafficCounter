@@ -18,6 +18,14 @@ public static class TrafficCounterDatabase
     public const string SqlServerVariable = "TRAFFICCOUNTER_DB";
     public const string PostgresVariable = "TRAFFICCOUNTER_PG";
     public const string PostgresPasswordVariable = "TRAFFICCOUNTER_PG_PASSWORD";
+    public const string DefaultProviderVariable = "TRAFFICCOUNTER_DB_PROVIDER";
+
+    /// <summary>
+    /// Main database of this machine for the analysis app and the tools (not the counting service, which has its own
+    /// setting): TRAFFICCOUNTER_DB_PROVIDER (SqlServer or PostgreSql), default SQL Server.
+    /// </summary>
+    public static DatabaseProvider DefaultProvider =>
+        Enum.TryParse(Core.PrivateLocations.Get(DefaultProviderVariable), ignoreCase: true, out DatabaseProvider provider) ? provider : DatabaseProvider.SqlServer;
 
     /// <summary>
     /// Connection string of a provider for the tools: TRAFFICCOUNTER_DB (SQL Server, default the local instance) or

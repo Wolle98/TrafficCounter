@@ -182,7 +182,7 @@ if (videos.Count == 0)
 // Test drives with known speed against the measured speed (ADR-0035), from the service's database or a new run.
 if (speedMode && liveMode)
 {
-    var database = Enum.Parse<TrafficCounter.Data.DatabaseProvider>(options.GetValueOrDefault("database", "SqlServer"), ignoreCase: true);
+    var database = options.TryGetValue("database", out string? databaseName) ? Enum.Parse<TrafficCounter.Data.DatabaseProvider>(databaseName, ignoreCase: true) : TrafficCounter.Data.TrafficCounterDatabase.DefaultProvider;
     List<SpeedCheck> all = [];
     PrintSpeedometer(speedometer);
     foreach (string video in videos)
@@ -200,7 +200,7 @@ if (speedMode && liveMode)
 // Hand count against what the running service stored for the same time (ADR-0032); no detection run.
 if (liveMode)
 {
-    var database = Enum.Parse<TrafficCounter.Data.DatabaseProvider>(options.GetValueOrDefault("database", "SqlServer"), ignoreCase: true);
+    var database = options.TryGetValue("database", out string? databaseName) ? Enum.Parse<TrafficCounter.Data.DatabaseProvider>(databaseName, ignoreCase: true) : TrafficCounter.Data.TrafficCounterDatabase.DefaultProvider;
     List<(string Video, string[] Tags, EvaluationResult Result)> live = [];
     foreach (string video in videos)
     {
@@ -244,7 +244,7 @@ if (options.TryGetValue("trace", out string? traceRange))
         string snapshot = video + ".site.json";
         SiteOptions traceSite = File.Exists(snapshot) ? SiteConfigurationFile.Read(snapshot) : site;
         (_, (float Top, float Bottom)? traceBand) = ReadMetadata(video);
-        Trace(video, traceBand is { } tb ? traceSite.ForCrop(tb.Top, tb.Bottom) : traceSite, detector, traceRange, trackerSettings);
+        Trace(video, traceBand is { } tb ? traceSite.ForCrop(tb.Top, tb.Bottom) : traceSite, detector, traceRange, trackerSettings, processing);
     }
 
     return 0;
@@ -568,7 +568,7 @@ static async Task<(EvaluationResult Result, string Load, List<DetectedPassage> D
 
 // Frame-by-frame log of one section, starting 10 s earlier so the tracker has history. Coordinates are the
 // bottom center of each box in frame pixels; "L" marks the counting line's x at that height.
-static void Trace(string video, SiteOptions site, IObjectDetector detector, string range, TrackerSettings trackerSettings)
+static void Trace(string video, SiteOptions site, IObjectDetector detector, string range, TrackerSettings trackerSettings, ProcessingOptions processing)
 {
     string[] parts = range.Split('-');
     TimeSpan from = ParseTime(parts[0]);
@@ -584,7 +584,7 @@ static void Trace(string video, SiteOptions site, IObjectDetector detector, stri
 
     using var capture = new VideoCapture(video, VideoCaptureAPIs.FFMPEG);
     capture.Set(VideoCaptureProperties.PosFrames, start);
-    using var pipeline = new CountingPipeline(detector, new ByteTracker(trackerSettings), site);
+    using var pipeline = new CountingPipeline(detector, new ByteTracker(trackerSettings), site, processing);
     for (int index = start; index < timestamps.Count; index++)
     {
         var image = new Mat();
@@ -613,14 +613,19 @@ static void Trace(string video, SiteOptions site, IObjectDetector detector, stri
         string tracks = string.Join(" ", result.Tracking.Active.Select(t =>
             string.Create(CultureInfo.InvariantCulture, $"#{t.TrackId}:{t.Class}@{t.Box.BottomCenter.X:0},{t.Box.BottomCenter.Y:0}")));
         string removed = result.Tracking.RemovedTrackIds.Count > 0 ? $" removed {string.Join(",", result.Tracking.RemovedTrackIds)}" : "";
-        string passages = string.Join(" ", result.Passages.Select(p => $"PASSAGE #{p.TrackId} {p.Direction} {p.Class}"));
-        Console.WriteLine($"{(int)offset.TotalMinutes:00}:{offset.Seconds:00}.{offset.Milliseconds / 10:00} D[{detections}] T[{tracks}]{removed} {passages}");
+        string passages = string.Join(" ", result.Passages.Select(Describe));
+        string skipped = result.DetectorRan ? "" : " (motion gate: skipped)";
+        Console.WriteLine($"{(int)offset.TotalMinutes:00}:{offset.Seconds:00}.{offset.Milliseconds / 10:00}{skipped} D[{detections}] T[{tracks}]{removed} {passages}");
     }
 
     foreach (VehiclePassageEvent p in pipeline.Flush())
     {
-        Console.WriteLine($"flush PASSAGE #{p.TrackId} {p.Direction} {p.Class}");
+        Console.WriteLine($"flush {Describe(p)}");
     }
+
+    static string Describe(VehiclePassageEvent p) => string.Create(CultureInfo.InvariantCulture,
+        $"PASSAGE #{p.TrackId} {p.Direction} {p.Class} speed {(p.SpeedKmh is float kmh ? $"{kmh:0.0} km/h" : "none")}")
+        + (p.Track is { } t ? string.Create(CultureInfo.InvariantCulture, $" from {t.SpeedSamples} positions over {t.SpeedSeconds:0.00} s in the zone, track {t.TrackSeconds:0.00} s from {t.FirstDistance:0} to {t.LastDistance:0} px") : "");
 
     static TimeSpan ParseTime(string text)
     {

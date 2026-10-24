@@ -168,6 +168,8 @@ setx TRAFFICCOUNTER_PG "Host=<NAS>;Port=5432;Database=trafficcounter;Username=tr
 setx TRAFFICCOUNTER_PG_PASSWORD "<password of the role>"
 ```
 
+**Main database of a machine:** `TRAFFICCOUNTER_DB_PROVIDER` (`SqlServer` or `PostgreSql`, default `SqlServer`) chooses the database the analysis app and the tools use when nothing else is given: Regression `--live`, Annotator `import`, Sync `weather`. The counting service keeps its own setting (`TrafficCounter:Storage:Provider`). With `setx TRAFFICCOUNTER_DB_PROVIDER PostgreSql` the development machine works on the NAS directly; SQL Server then only receives data with a sync.
+
 **Synology:** the PostgreSQL package from the Package Center runs next to the built-in DSM database server. It therefore uses a port of its own, here 5433, and its own configuration files in the package's data directory (`pg_hba.conf`). Do not use port 5432 of the DSM server.
 
 **Synchronise** as often as you like, for example after work on the development machine or before analysing there:

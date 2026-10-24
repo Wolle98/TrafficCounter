@@ -20,7 +20,7 @@ internal static class ImportCommand
     public static async Task<int> RunAsync(IReadOnlyList<string> arguments)
     {
         // --provider PostgreSql writes to the database from TRAFFICCOUNTER_PG instead of SQL Server (ADR-0030).
-        DatabaseProvider provider = DatabaseProvider.SqlServer;
+        DatabaseProvider provider = TrafficCounterDatabase.DefaultProvider;
         List<string> videos = [];
         for (int i = 0; i < arguments.Count; i++)
         {

@@ -4,14 +4,27 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.10.7] – 2026-10-24
+
+### Added
+
+- `TRAFFICCOUNTER_DB_PROVIDER` sets the machine's main database for the analysis app and the tools (Regression `--live`, Annotator `import`, Sync `weather`); default SQL Server. The analysis app also takes the PostgreSQL connection from `TRAFFICCOUNTER_PG`.
+
+### Changed
+
+- Analysis app, operations page: image quality is called good / okay / limited (was good / limited / unusable), since minutes of low contrast still count as measured.
+- Regression `--trace` uses the processing options (`--max-fps`, `--motion-gate`), marks frames the motion gate skipped and shows the speed details of each passage.
+
+### Fixed
+
+- `fill-degraded` takes over the end of the second camera's copied operating periods; before, a period copied while it was running stayed "running" in the target for good.
+
 ## [0.10.6] – 2026-10-24
 
 ### Changed
 
 - Speed: the shortest observation in the speed zone is 0.25 s instead of 0.4 s (`Site:SpeedMinSeconds`), so fast cars on the near lane get a speed too; still at least five positions. Test drives unchanged (NC400 25/25, mean absolute error 6.7 %; UGREEN 20/20, 4.8 %); with the live settings a few more cars get a speed (NC400 94 → 95, UGREEN 88 → 93 in one hour).
-
 - Operations events start with the camera's name (`Source:Name`, else the USB device name or the source description), e.g. "NC400: Camera position Moved: …".
-
 - Analysis app: a date range chosen on one page (date fields or quick buttons) is kept when switching to another page.
 - Analysis app, speed page: the table by speed and class shows plain counts per class; only "all" has its share, in a column of its own; a last row gives the column totals.
 

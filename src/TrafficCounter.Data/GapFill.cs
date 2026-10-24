@@ -4,11 +4,12 @@ using TrafficCounter.Core.Operations;
 namespace TrafficCounter.Data;
 
 /// <summary>What one gap fill changed (or would change) in the target database.</summary>
-public sealed record GapFillResult(int Minutes, int Ranges, int PassagesRemoved, int MinutesRemoved, SyncResult? Copied)
+public sealed record GapFillResult(int Minutes, int Ranges, int PassagesRemoved, int MinutesRemoved, SyncResult? Copied, int PeriodsRefreshed = 0)
 {
     public override string ToString() =>
         $"{Minutes} minutes in {Ranges} ranges: removed {PassagesRemoved} passages and {MinutesRemoved} minute rows of the impaired camera"
-        + (Copied is { } c ? $", copied {c.PassagesAdded} passages and {c.MinutesAdded} minutes" : "");
+        + (Copied is { } c ? $", copied {c.PassagesAdded} passages and {c.MinutesAdded} minutes" : "")
+        + (PeriodsRefreshed > 0 ? $", updated the end of {PeriodsRefreshed} copied operating periods" : "");
 }
 
 /// <summary>
@@ -63,9 +64,14 @@ public static class GapFill
             .Where(v => !sourceMachines.Contains(v.MachineName) && fillSet.Contains(Minute(v.PassedAt)))
             .Select(v => v.Id)];
 
-        if (dryRun || fill.Count == 0)
+        if (dryRun)
         {
             return new GapFillResult(fill.Count, ranges.Count, passageRows.Count, minuteRows.Count, null);
+        }
+
+        if (fill.Count == 0)
+        {
+            return new GapFillResult(0, 0, 0, 0, null, await RefreshCopiedPeriodsAsync(source, target, cancellationToken));
         }
 
         foreach (long[] chunk in passageRows.Chunk(500))
@@ -88,7 +94,35 @@ public static class GapFill
                 total.EventsAdded + copied.EventsAdded, total.DriftMeasurementsAdded + copied.DriftMeasurementsAdded);
         }
 
-        return new GapFillResult(fill.Count, ranges.Count, passageRows.Count, minuteRows.Count, total);
+        return new GapFillResult(fill.Count, ranges.Count, passageRows.Count, minuteRows.Count, total, await RefreshCopiedPeriodsAsync(source, target, cancellationToken));
+    }
+
+    /// <summary>
+    /// A fill copies the second camera's operating period while it is still running; later fills only copy the
+    /// periods of their own ranges. Without this the copy would stay "running" for good in the target. The end of
+    /// every copied period (same sync id) is taken over from the source.
+    /// </summary>
+    private static async Task<int> RefreshCopiedPeriodsAsync(TrafficCounterDbContext source, TrafficCounterDbContext target, CancellationToken cancellationToken)
+    {
+        Dictionary<Guid, OperatingPeriod> sourcePeriods = await source.OperatingPeriods.AsNoTracking().ToDictionaryAsync(p => p.SyncId, cancellationToken);
+        List<Guid> ids = [.. sourcePeriods.Keys];
+        List<OperatingPeriod> copies = await target.OperatingPeriods.Where(p => ids.Contains(p.SyncId)).ToListAsync(cancellationToken);
+        int refreshed = 0;
+        foreach (OperatingPeriod copy in copies)
+        {
+            OperatingPeriod original = sourcePeriods[copy.SyncId];
+            if (copy.EndedAt != original.EndedAt || copy.EndReason != original.EndReason || copy.LastHeartbeatAt != original.LastHeartbeatAt)
+            {
+                copy.EndedAt = original.EndedAt;
+                copy.EndReason = original.EndReason;
+                copy.LastHeartbeatAt = original.LastHeartbeatAt;
+                copy.UpdatedAt = original.UpdatedAt;
+                refreshed++;
+            }
+        }
+
+        await target.SaveChangesAsync(cancellationToken);
+        return refreshed;
     }
 
     /// <summary>The minute (UTC) a point in time falls into.</summary>

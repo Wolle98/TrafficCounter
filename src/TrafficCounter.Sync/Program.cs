@@ -38,7 +38,7 @@ switch (args.FirstOrDefault())
         return await RestoreFromLogAsync(options);
     case "weather":
         return await WeatherAsync(
-            Enum.Parse<DatabaseProvider>(options.GetValueOrDefault("provider", "SqlServer"), ignoreCase: true),
+            options.TryGetValue("provider", out string? weatherProvider) ? Enum.Parse<DatabaseProvider>(weatherProvider, ignoreCase: true) : TrafficCounterDatabase.DefaultProvider,
             options.GetValueOrDefault("station") ?? StationFromConfig(),
             options.GetValueOrDefault("from"),
             options.GetValueOrDefault("to"));

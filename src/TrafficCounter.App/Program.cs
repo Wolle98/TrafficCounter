@@ -10,7 +10,8 @@ using TrafficCounter.Core;
 using TrafficCounter.Data;
 
 // Analysis app (stage 4, ADR-0014). Same database settings as the service: Storage:Provider and the connection
-// string "TrafficCounter"; the PostgreSQL password comes from TRAFFICCOUNTER_PG_PASSWORD (ADR-0030).
+// string "TrafficCounter"; without them the machine's main database (TRAFFICCOUNTER_DB_PROVIDER with TRAFFICCOUNTER_DB
+// or TRAFFICCOUNTER_PG). The PostgreSQL password comes from TRAFFICCOUNTER_PG_PASSWORD (ADR-0030).
 WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
@@ -18,10 +19,8 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationO
 });
 builder.Host.UseWindowsService(o => o.ServiceName = "TrafficCounterApp");
 
-DatabaseProvider provider = builder.Configuration.GetValue("Storage:Provider", DatabaseProvider.SqlServer);
-string connectionString = builder.Configuration.GetConnectionString("TrafficCounter")
-    ?? (provider == DatabaseProvider.SqlServer ? TrafficCounterDatabase.ConnectionString(provider) : null)
-    ?? throw new InvalidOperationException("Connection string 'TrafficCounter' is missing.");
+DatabaseProvider provider = builder.Configuration.GetValue("Storage:Provider", TrafficCounterDatabase.DefaultProvider);
+string connectionString = builder.Configuration.GetConnectionString("TrafficCounter") ?? TrafficCounterDatabase.ConnectionString(provider);
 if (provider == DatabaseProvider.PostgreSql)
 {
     var postgres = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
