@@ -75,7 +75,7 @@ else if (_buckets.Count > 0)
     {
         <h2>@L["Period.RainVsDry"]</h2>
         <table class="data">
-            <thead><tr><th></th><th>@L["Period.HoursMeasured"]</th><th>@L["Period.VehiclesPerHour"]</th><th>@L["Period.BicyclesPerHour"]</th></tr></thead>
+            <thead><tr><th></th><th class="num">@L["Period.HoursMeasured"]</th><th class="num">@L["Period.VehiclesPerHour"]</th><th class="num">@L["Period.BicyclesPerHour"]</th></tr></thead>
             <tbody>
                 @foreach ((string label, Func<WeatherRow, bool> condition) in WeatherGroups)
                 {
@@ -93,7 +93,7 @@ else if (_buckets.Count > 0)
     }
 
     <table class="data">
-        <thead><tr><th>@(_size >= TimeSpan.FromDays(1) ? L["Table.Day"] : L["Table.Hour"])</th><th>@L["Table.Vehicles"]</th><th>@L["Table.Measured"]</th><th>@L["Table.PerHour"]</th></tr></thead>
+        <thead><tr><th>@(_size >= TimeSpan.FromDays(1) ? L["Table.Day"] : L["Table.Hour"])</th><th class="num">@L["Table.Vehicles"]</th><th class="num">@L["Table.Measured"]</th><th class="num">@L["Table.PerHour"]</th></tr></thead>
         <tbody>
             @foreach (Bucket bucket in _buckets.Where(b => b.Minutes > 0))
             {

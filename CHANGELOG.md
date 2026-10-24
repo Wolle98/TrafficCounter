@@ -4,6 +4,22 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.10.5] – 2026-10-24
+
+### Added
+
+- Counting service log: every passage line also gives its speed (or "none"), the positions and time inside the speed measuring zone, the track's duration and where it was first and last seen, so a missing speed can be explained.
+- Counting service preview: the speed measuring zone is shown as a very transparent red strip.
+
+- `TrafficCounter.Sync restore-from-log`: puts a counting machine's passages and minutes back from its service log for minutes the databases no longer have, e.g. after `fill-degraded` replaced them with the counts of a second camera running another model (without speeds and image quality, which the log does not have).
+
+## [0.10.4] – 2026-10-24
+
+### Changed
+
+- Analysis app, speed page: columns "above 35" and "above 40" by direction and time of day; the table by speed and class also gives each count's share of its column (two decimals). Numeric columns of all tables are centred under their headings.
+- Counting service preview window: the status line also names the model in use, next to the execution provider.
+
 ## [0.10.3] – 2026-10-23
 
 ### Changed

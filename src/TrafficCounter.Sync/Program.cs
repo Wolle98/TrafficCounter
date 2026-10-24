@@ -34,6 +34,8 @@ switch (args.FirstOrDefault())
         return await AddAlongsideAsync(options);
     case "fill-degraded":
         return await FillDegradedAsync(options);
+    case "restore-from-log":
+        return await RestoreFromLogAsync(options);
     case "weather":
         return await WeatherAsync(
             Enum.Parse<DatabaseProvider>(options.GetValueOrDefault("provider", "SqlServer"), ignoreCase: true),
@@ -80,6 +82,10 @@ switch (args.FirstOrDefault())
                   camera measured itself; the impaired camera's passages of those minutes are removed first, so nothing
                   counts twice. Run a sync first. --include-missing also fills minutes without any row (e.g. the
                   counting machine was off); only after a sync, otherwise not yet copied minutes would count twice.
+              TrafficCounter.Sync restore-from-log --log <file>[,<file>...] --machine <name> --from <time> --to <time> [--dry-run true]
+                  Puts a counting machine's passages and minutes back from its service log (debug level) for the
+                  minutes the databases no longer have, e.g. after fill-degraded replaced them with a second camera's
+                  counts; that camera's rows of those minutes are removed. The log has no speeds and no image quality.
               TrafficCounter.Sync weather [--provider SqlServer|PostgreSql] [--station <DWD id>] [--from yyyy-MM-dd] [--to yyyy-MM-dd]
                   Imports hourly weather of a DWD station from Bright Sky (ADR-0023); default: the last 7 days and
                   the station in TrafficCounter:Weather:StationId of the private site configuration.
@@ -388,6 +394,47 @@ static async Task<int> FillDegradedAsync(Dictionary<string, string> options)
     }
 
     return 0;
+}
+
+static async Task<int> RestoreFromLogAsync(Dictionary<string, string> options)
+{
+    var invariant = System.Globalization.CultureInfo.InvariantCulture;
+    DateTimeOffset from = DateTimeOffset.Parse(options["from"], invariant);
+    DateTimeOffset to = DateTimeOffset.Parse(options["to"], invariant);
+    string machine = options.GetValueOrDefault("machine") ?? throw new ArgumentException("--machine is required.");
+    bool dryRun = options.GetValueOrDefault("dry-run") is "true";
+    (List<LoggedPassage> passages, List<LoggedMinute> minutes) = LogRestore.Parse(
+        options["log"].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).SelectMany(File.ReadLines));
+    Console.WriteLine($"Log: {passages.Count} passages, {minutes.Count} minutes");
+    (double? latitude, double? longitude) = SiteCoordinatesFromConfig();
+    var lighting = new TrafficCounter.Core.Operations.LightingClassifier(latitude, longitude);
+    if (!dryRun && !await BothReachableAsync())
+    {
+        return 1;
+    }
+
+    foreach (DatabaseProvider provider in new[] { DatabaseProvider.PostgreSql, DatabaseProvider.SqlServer })
+    {
+        await using TrafficCounterDbContext db = Open(provider);
+        LogRestoreResult result = await LogRestore.RestoreAsync(db, passages, minutes, machine, from, to, lighting, dryRun, CancellationToken.None);
+        Console.WriteLine($"{provider}: {(dryRun ? "would restore " : "")}{result}");
+    }
+
+    return 0;
+}
+
+static (double? Latitude, double? Longitude) SiteCoordinatesFromConfig()
+{
+    if (PrivateLocations.ConfigPath is not { } path || !File.Exists(path))
+    {
+        return (null, null);
+    }
+
+    using var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+    return json.RootElement.TryGetProperty("TrafficCounter", out var root) && root.TryGetProperty("Site", out var site)
+        && site.TryGetProperty("Latitude", out var latitude) && site.TryGetProperty("Longitude", out var longitude)
+        ? (latitude.GetDouble(), longitude.GetDouble())
+        : (null, null);
 }
 
 static async Task<int> AddAlongsideAsync(Dictionary<string, string> options)

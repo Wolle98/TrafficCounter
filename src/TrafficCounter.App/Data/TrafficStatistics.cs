@@ -18,7 +18,7 @@ public readonly record struct Bucket(DateTime Start, int Count, int CoveredMinut
 }
 
 /// <summary>Speed figures of a set of passages (stage 5, statistical estimates, ADR-0033).</summary>
-public sealed record SpeedSummary(int Count, double Median, double V85, double ShareOver30, double ShareOver40, double ShareOver50);
+public sealed record SpeedSummary(int Count, double Median, double V85, double ShareOver30, double ShareOver35, double ShareOver40, double ShareOver50);
 
 /// <summary>Aggregations for the analysis pages; pure functions over the rows from <see cref="TrafficQueries"/>.</summary>
 public static class TrafficStatistics
@@ -192,6 +192,7 @@ public static class TrafficStatistics
             Percentile(speeds, 0.5),
             Percentile(speeds, 0.85),
             speeds.Count(s => s > 30) / (double)speeds.Count,
+            speeds.Count(s => s > 35) / (double)speeds.Count,
             speeds.Count(s => s > 40) / (double)speeds.Count,
             speeds.Count(s => s > 50) / (double)speeds.Count);
     }

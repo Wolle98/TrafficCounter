@@ -37,7 +37,7 @@ else if (_camera is not null && _summary is not null)
 
     <h2>@L["Speed.ByDirectionTime"]</h2>
     <table class="data">
-        <thead><tr><th></th><th>@L["Table.Vehicles"]</th><th>@L["Speed.Median"]</th><th>V85</th><th>@L["Speed.AboveShort", 30]</th><th>@L["Speed.AboveShort", 50]</th></tr></thead>
+        <thead><tr><th></th><th class="num">@L["Table.Vehicles"]</th><th class="num">@L["Speed.Median"]</th><th class="num">V85</th><th class="num">@L["Speed.AboveShort", 30]</th><th class="num">@L["Speed.AboveShort", 35]</th><th class="num">@L["Speed.AboveShort", 40]</th><th class="num">@L["Speed.AboveShort", 50]</th></tr></thead>
         <tbody>
             @foreach ((string label, IEnumerable<PassageRow> rows) in Groups)
             {
@@ -49,6 +49,8 @@ else if (_camera is not null && _summary is not null)
                         <td class="num">@s.Median.ToString("0", Culture)</td>
                         <td class="num">@s.V85.ToString("0", Culture)</td>
                         <td class="num">@s.ShareOver30.ToString("P2", Culture)</td>
+                        <td class="num">@s.ShareOver35.ToString("P2", Culture)</td>
+                        <td class="num">@s.ShareOver40.ToString("P2", Culture)</td>
                         <td class="num">@s.ShareOver50.ToString("P2", Culture)</td>
                     </tr>
                 }
@@ -77,9 +79,9 @@ else if (_camera is not null && _summary is not null)
                     @foreach ((VehicleClass vehicleClass, _) in ClassesWithSpeeds)
                     {
                         int count = inBand.Count(p => p.Class == vehicleClass);
-                        <td class="num">@(count == 0 ? "" : count.ToString("N0", Culture))</td>
+                        <td class="num">@(count == 0 ? "" : WithShare(count, WithSpeed.Count(p => p.Class == vehicleClass)))</td>
                     }
-                    <td class="num"><strong>@inBand.Count.ToString("N0", Culture)</strong></td>
+                    <td class="num"><strong>@WithShare(inBand.Count, WithSpeed.Count())</strong></td>
                 </tr>
             }
         </tbody>
@@ -114,6 +116,10 @@ else if (_camera is not null && _summary is not null)
     private string? _error;
 
     private IEnumerable<PassageRow> WithSpeed => _passages.Where(p => p.SpeedKmh is > 0);
+
+    /// <summary>A count with its share of the column total, e.g. "12 (3.45 %)".</summary>
+    private static string WithShare(int count, int total) =>
+        total == 0 ? count.ToString("N0", Culture) : $"{count.ToString("N0", Culture)} ({(count / (double)total).ToString("P2", Culture)})";
 
     /// <summary>Classes that have at least one speed in the period, in display order.</summary>
     private IEnumerable<(VehicleClass Class, string Color)> ClassesWithSpeeds =>

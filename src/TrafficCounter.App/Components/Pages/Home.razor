@@ -59,7 +59,7 @@ else
 
     <h2>@L["Home.ByClass"]</h2>
     <table class="data">
-        <thead><tr><th>@L["Table.Class"]</th><th>@L["Table.Count"]</th><th>@L["Table.Share"]</th><th>@_camera.DirectionA</th><th>@_camera.DirectionB</th></tr></thead>
+        <thead><tr><th>@L["Table.Class"]</th><th class="num">@L["Table.Count"]</th><th class="num">@L["Table.Share"]</th><th class="num">@_camera.DirectionA</th><th class="num">@_camera.DirectionB</th></tr></thead>
         <tbody>
             @foreach ((VehicleClass vehicleClass, string color) in TrafficStatistics.Classes)
             {

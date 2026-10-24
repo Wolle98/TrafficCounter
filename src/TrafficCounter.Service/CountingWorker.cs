@@ -231,7 +231,7 @@ internal sealed partial class CountingWorker(
                         foreach (VehiclePassageEvent passage in result.Passages)
                         {
                             writer.Enqueue(new PassageRecord(cameraId, periodId, passage, lighting.Classify(passage.PassedAt)));
-                            LogPassage(passage.TrackId, passage.Direction, passage.Class, passage.ClassConfidence, passage.TrailerCount, passage.LinePosition, passage.TrackLengthFrames, passage.PassedAt);
+                            LogPassage(passage);
                         }
 
                         if (_options.QualitySampleInterval > 0 && processedInMinute % _options.QualitySampleInterval == 1)
@@ -397,7 +397,7 @@ internal sealed partial class CountingWorker(
             foreach (VehiclePassageEvent passage in pipeline.Flush())
             {
                 writer.Enqueue(new PassageRecord(cameraId, periodId, passage, lighting.Classify(passage.PassedAt)));
-                LogPassage(passage.TrackId, passage.Direction, passage.Class, passage.ClassConfidence, passage.TrailerCount, passage.LinePosition, passage.TrackLengthFrames, passage.PassedAt);
+                LogPassage(passage);
             }
 
             writer.Enqueue(collector.Flush());
@@ -514,7 +514,7 @@ internal sealed partial class CountingWorker(
     private static bool ShowPreview(PreviewRenderer preview, Mat image, FrameResult result, double fps, IObjectDetector detector)
     {
         using Mat display = preview.Render(image, result, [
-            $"{fps:0.0} fps  detect {result.DetectionTime.TotalMilliseconds:0} ms  {detector.ExecutionProvider}",
+            $"{fps:0.0} fps  detect {result.DetectionTime.TotalMilliseconds:0} ms  {detector.ExecutionProvider}  model {detector.ModelName}",
             "q = quit",
         ]);
         Cv2.ImShow(PreviewWindow, display);
@@ -643,8 +643,19 @@ internal sealed partial class CountingWorker(
     [LoggerMessage(Level = LogLevel.Information, Message = "{Source} connected, {Width}x{Height}")]
     private partial void LogSourceConnected(string source, int width, int height);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Passage track {TrackId}: {Direction} {VehicleClass} ({ClassConfidence:0.00}), {Trailers} trailer(s), line position {LinePosition:0.00}, {Frames} frames, at {PassedAt:HH:mm:ss.fff}")]
-    private partial void LogPassage(int trackId, TravelDirection direction, VehicleClass vehicleClass, float? classConfidence, int trailers, float linePosition, int frames, DateTimeOffset passedAt);
+    private void LogPassage(VehiclePassageEvent passage)
+    {
+        TrackObservation? track = passage.Track;
+        LogPassage(passage.TrackId, passage.Direction, passage.Class, passage.ClassConfidence, passage.TrailerCount, passage.LinePosition,
+            passage.TrackLengthFrames, passage.PassedAt,
+            passage.SpeedKmh is float kmh ? kmh.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " km/h" : "none",
+            track?.SpeedSamples ?? 0, track?.SpeedSeconds ?? 0, track?.TrackSeconds ?? 0, track?.FirstDistance ?? 0, track?.LastDistance ?? 0);
+    }
+
+    // The part up to "at …" is read back by TrafficCounter.Sync restore-from-log; keep it unchanged.
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Passage track {TrackId}: {Direction} {VehicleClass} ({ClassConfidence:0.00}), {Trailers} trailer(s), line position {LinePosition:0.00}, {Frames} frames, at {PassedAt:HH:mm:ss.fff}; speed {Speed} from {SpeedSamples} positions over {SpeedSeconds:0.00} s in the zone, track {TrackSeconds:0.00} s from {FirstDistance:0} to {LastDistance:0} px beside the line")]
+    private partial void LogPassage(int trackId, TravelDirection direction, VehicleClass vehicleClass, float? classConfidence, int trailers, float linePosition, int frames, DateTimeOffset passedAt,
+        string speed, int speedSamples, double speedSeconds, double trackSeconds, float firstDistance, float lastDistance);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Network {MinuteStart:HH:mm}: ping {Host} sent {Sent}, lost {Lost}, median {Median} ms, 90 % {P90} ms, max {Max} ms")]
     private partial void LogNetworkMinute(DateTimeOffset minuteStart, string host, int sent, int lost, long? median, long? p90, long? max);

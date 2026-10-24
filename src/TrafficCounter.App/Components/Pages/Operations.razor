@@ -20,7 +20,7 @@ else if (_camera is not null)
 {
     <h2>@L["Ops.Coverage"]</h2>
     <table class="data">
-        <thead><tr><th>@L["Table.Day"]</th><th>@L["Table.Measured"]</th><th>@L["Ops.Good"]</th><th>@L["Ops.Degraded"]</th><th>@L["Ops.Unusable"]</th><th>@L["Ops.StreamDegraded"]</th><th>@L["Ops.CameraOff"]</th></tr></thead>
+        <thead><tr><th>@L["Table.Day"]</th><th class="num">@L["Table.Measured"]</th><th class="num">@L["Ops.Good"]</th><th class="num">@L["Ops.Degraded"]</th><th class="num">@L["Ops.Unusable"]</th><th class="num">@L["Ops.StreamDegraded"]</th><th class="num">@L["Ops.CameraOff"]</th></tr></thead>
         <tbody>
             @foreach (IGrouping<DateTime, MinuteRow> day in _minutes.GroupBy(m => m.Start.Date).OrderByDescending(g => g.Key))
             {

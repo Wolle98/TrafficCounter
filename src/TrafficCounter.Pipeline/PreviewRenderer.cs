@@ -5,7 +5,10 @@ using TrafficCounter.Core.Geometry;
 
 namespace TrafficCounter.Pipeline;
 
-/// <summary>Debug overlay: band, counting line, detections, tracks and counters. Display only – nothing is saved.</summary>
+/// <summary>
+/// Debug overlay: band, speed measuring zone, counting line, detections, tracks and counters. Display only – nothing is
+/// saved.
+/// </summary>
 public sealed class PreviewRenderer(SiteOptions site, int displayWidth = 1280)
 {
     private static readonly Scalar BandColor = new(255, 200, 0);
@@ -14,6 +17,8 @@ public sealed class PreviewRenderer(SiteOptions site, int displayWidth = 1280)
     private static readonly Scalar TrackColor = new(80, 220, 80);
     private static readonly Scalar TrailerColor = new(0, 140, 255);
     private static readonly Scalar IgnoreColor = new(128, 128, 128);
+    private static readonly Scalar SpeedZoneColor = new(0, 0, 255);
+    private const double SpeedZoneOpacity = 0.08;
     private int _countA;
     private int _countB;
 
@@ -32,6 +37,7 @@ public sealed class PreviewRenderer(SiteOptions site, int displayWidth = 1280)
         }
 
         using Mat canvas = frame.Clone();
+        DrawSpeedZone(canvas, result);
         Cv2.Rectangle(canvas, result.Band, BandColor, 2);
         foreach (RelativeRect zone in site.IgnoreZones)
         {
@@ -69,6 +75,45 @@ public sealed class PreviewRenderer(SiteOptions site, int displayWidth = 1280)
         }
 
         return display;
+    }
+
+    /// <summary>
+    /// Very transparent red strip: a track's ground point (bottom centre of its box) inside it is used for the speed
+    /// estimate, the same distance from the counting line as in the counting engine. Only within the band, and only if
+    /// a speed scale is configured.
+    /// </summary>
+    private void DrawSpeedZone(Mat image, FrameResult result)
+    {
+        if (site.FarKerbMetersPerImageWidth is null || site.NearKerbMetersPerImageWidth is null || site.FarKerb is null || site.NearKerb is null)
+        {
+            return;
+        }
+
+        Rect band = result.Band & new Rect(0, 0, image.Width, image.Height);
+        double dx = result.Line.End.X - result.Line.Start.X;
+        double dy = result.Line.End.Y - result.Line.Start.Y;
+        double length = Math.Sqrt((dx * dx) + (dy * dy));
+        if (band.Width <= 0 || band.Height <= 0 || length < 1)
+        {
+            return;
+        }
+
+        // The line extended beyond the band, shifted to both sides by the zone width along its normal.
+        double ux = dx / length, uy = dy / length;
+        double zone = site.SpeedZoneFraction * image.Width;
+        double reach = image.Width + image.Height;
+        Point Corner(Point2 from, double along, double side) => new(
+            (int)Math.Round(from.X + (ux * along) - (uy * side) - band.X), (int)Math.Round(from.Y + (uy * along) + (ux * side) - band.Y));
+        Point[] strip =
+        [
+            Corner(result.Line.Start, -reach, zone), Corner(result.Line.End, reach, zone),
+            Corner(result.Line.End, reach, -zone), Corner(result.Line.Start, -reach, -zone),
+        ];
+
+        using Mat region = new(image, band);
+        using Mat tinted = region.Clone();
+        Cv2.FillConvexPoly(tinted, strip, SpeedZoneColor);
+        Cv2.AddWeighted(tinted, SpeedZoneOpacity, region, 1 - SpeedZoneOpacity, 0, region);
     }
 
     /// <summary>Grey hatched rectangle: detections with their ground point here are dropped.</summary>

@@ -9,6 +9,7 @@ namespace TrafficCounter.Core;
 /// Lets reports tell lanes and sidewalks apart without fixing zones in the schema (ADR-0020).
 /// </param>
 /// <param name="TrailerCount">Trailers towed by the vehicle; they are not counted as vehicles of their own (ADR-0013).</param>
+/// <param name="Track">How the track was observed, for the log (e.g. why a passage has no speed); not stored.</param>
 public sealed record VehiclePassageEvent(
     DateTimeOffset PassedAt,
     TravelDirection Direction,
@@ -18,4 +19,13 @@ public sealed record VehiclePassageEvent(
     int TrackId,
     int TrackLengthFrames,
     float LinePosition,
-    int TrailerCount = 0);
+    int TrailerCount = 0,
+    TrackObservation? Track = null);
+
+/// <summary>How a counted track was observed: the basis of its speed estimate and where it was seen.</summary>
+/// <param name="SpeedSamples">Positions inside the speed measuring zone around the counting line.</param>
+/// <param name="SpeedSeconds">Time between the first and the last of those positions.</param>
+/// <param name="TrackSeconds">Time between the first and the last position of the whole track.</param>
+/// <param name="FirstDistance">Distance from the counting line (pixels, signed) where the track was first seen.</param>
+/// <param name="LastDistance">Distance from the counting line where it was last seen.</param>
+public sealed record TrackObservation(int SpeedSamples, double SpeedSeconds, double TrackSeconds, float FirstDistance, float LastDistance);

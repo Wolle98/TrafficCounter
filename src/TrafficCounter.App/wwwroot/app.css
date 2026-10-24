@@ -99,7 +99,9 @@ h2 { font-size: 1.15rem; font-weight: 600; margin: 2rem 0 .6rem; }
 table.data { border-collapse: collapse; width: 100%; background: var(--card); border: 1px solid var(--line); }
 table.data th, table.data td { padding: .35rem .7rem; border-bottom: 1px solid var(--line); text-align: left; }
 table.data th { background: #eef1f5; font-weight: 600; }
-table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Without vertical lines, values sit centred under their heading. */
+table.data td.num, table.data th.num { text-align: center; }
+table.data td.num { font-variant-numeric: tabular-nums; }
 table.data td.estimate { color: var(--muted); font-style: italic; cursor: help; }
 table.data tr.warning td { background: #fff8ec; }
 table.data tr.error td { background: #fdeceb; }

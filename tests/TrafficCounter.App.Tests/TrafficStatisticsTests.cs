@@ -122,5 +122,7 @@ public class TrafficStatisticsTests
         Assert.Equal(50.5, summary.Median, 3);
         Assert.Equal(85.15, summary.V85, 2);
         Assert.Equal(0.70, summary.ShareOver30, 3);
+        Assert.Equal(0.65, summary.ShareOver35, 3);
+        Assert.Equal(0.60, summary.ShareOver40, 3);
     }
 }

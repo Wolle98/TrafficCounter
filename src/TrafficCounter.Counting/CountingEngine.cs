@@ -103,6 +103,12 @@ public sealed class CountingEngine(CountingSettings settings)
         float distance = settings.Line.SignedDistance(point);
 
         state.Frames++;
+        if (state.Frames == 1)
+        {
+            state.FirstTimestamp = timestamp;
+            state.FirstDistance = distance;
+        }
+
         state.Vote(obj.Class, obj.Confidence);
         state.UpdateVelocity(point.X, timestamp);
         if (settings.Speed is { } speed && MathF.Abs(distance) <= speed.ZonePixels)
@@ -241,6 +247,10 @@ public sealed class CountingEngine(CountingSettings settings)
 
         public DateTimeOffset LastTimestamp { get; set; }
 
+        public DateTimeOffset FirstTimestamp { get; set; }
+
+        public float FirstDistance { get; set; }
+
         public DateTimeOffset? LastSignChangeAt { get; set; }
 
         public int? EstablishedSide { get; set; }
@@ -345,8 +355,14 @@ public sealed class CountingEngine(CountingSettings settings)
                 kmh = speed.Estimate([.. _speedSamples.Select(s => ((s.At - first).TotalSeconds, s.X, s.LinePosition))]);
             }
 
+            var observation = new TrackObservation(
+                _speedSamples.Count,
+                _speedSamples.Count > 1 ? (_speedSamples[^1].At - _speedSamples[0].At).TotalSeconds : 0,
+                (LastTimestamp - FirstTimestamp).TotalSeconds,
+                FirstDistance,
+                LastDistance ?? 0);
             return new VehiclePassageEvent(
-                crossing.At, crossing.Direction, winner, share, kmh, trackId, Frames, crossing.LinePosition, trailers);
+                crossing.At, crossing.Direction, winner, share, kmh, trackId, Frames, crossing.LinePosition, trailers, observation);
         }
     }
 }
