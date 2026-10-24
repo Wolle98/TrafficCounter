@@ -538,4 +538,7 @@
   <data name="Footer.Source" xml:space="preserve">
     <value>Source code</value>
   </data>
+  <data name="Table.Total" xml:space="preserve">
+    <value>Total</value>
+  </data>
 </root>

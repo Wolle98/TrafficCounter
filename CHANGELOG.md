@@ -4,13 +4,23 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.10.6] – 2026-10-24
+
+### Changed
+
+- Speed: the shortest observation in the speed zone is 0.25 s instead of 0.4 s (`Site:SpeedMinSeconds`), so fast cars on the near lane get a speed too; still at least five positions. Test drives unchanged (NC400 25/25, mean absolute error 6.7 %; UGREEN 20/20, 4.8 %); with the live settings a few more cars get a speed (NC400 94 → 95, UGREEN 88 → 93 in one hour).
+
+- Operations events start with the camera's name (`Source:Name`, else the USB device name or the source description), e.g. "NC400: Camera position Moved: …".
+
+- Analysis app: a date range chosen on one page (date fields or quick buttons) is kept when switching to another page.
+- Analysis app, speed page: the table by speed and class shows plain counts per class; only "all" has its share, in a column of its own; a last row gives the column totals.
+
 ## [0.10.5] – 2026-10-24
 
 ### Added
 
 - Counting service log: every passage line also gives its speed (or "none"), the positions and time inside the speed measuring zone, the track's duration and where it was first and last seen, so a missing speed can be explained.
 - Counting service preview: the speed measuring zone is shown as a very transparent red strip.
-
 - `TrafficCounter.Sync restore-from-log`: puts a counting machine's passages and minutes back from its service log for minutes the databases no longer have, e.g. after `fill-degraded` replaced them with the counts of a second camera running another model (without speeds and image quality, which the log does not have).
 
 ## [0.10.4] – 2026-10-24

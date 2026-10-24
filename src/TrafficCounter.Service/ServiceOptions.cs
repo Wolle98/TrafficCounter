@@ -18,6 +18,12 @@ public sealed class SourceOptions
 {
     public SourceType Type { get; set; } = SourceType.Usb;
 
+    /// <summary>
+    /// Short name of the camera (e.g. "NC400"), put in front of every event message, so events of two cameras counting
+    /// the same street can be told apart. Default: the USB device name, else the source description.
+    /// </summary>
+    public string? Name { get; set; }
+
     public UsbCameraOptions Usb { get; set; } = new();
 
     public FileSourceOptions File { get; set; } = new();

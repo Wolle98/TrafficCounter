@@ -538,4 +538,7 @@
   <data name="Footer.Source" xml:space="preserve">
     <value>Quellcode</value>
   </data>
+  <data name="Table.Total" xml:space="preserve">
+    <value>Summe</value>
+  </data>
 </root>

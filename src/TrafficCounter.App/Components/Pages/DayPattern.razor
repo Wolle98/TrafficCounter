@@ -2,6 +2,7 @@
 @page "/tag"
 @using System.Globalization
 @inject TrafficQueries Queries
+@inject SelectedRange Range
 
 <PageTitle>@L["App.PageTitle", L["Nav.DayPattern"]]</PageTitle>
 
@@ -56,7 +57,11 @@ else if (_heatmap is not null)
     private List<string> _labels = [];
     private string? _error;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        (_from, _to) = Range.Or(_from, _to);
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {

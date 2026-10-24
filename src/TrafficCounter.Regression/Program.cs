@@ -35,7 +35,7 @@ if (args is ["-h" or "--help", ..])
           TrafficCounter.Regression --video <video.mp4> --trace <mm:ss-mm:ss> [--config ...] [--model ...]
           TrafficCounter.Regression --live true [--database SqlServer|PostgreSql] [--video ...] [--recordings ...]
                                     (compares the hand count with what the running service stored, ADR-0032)
-          TrafficCounter.Regression --speed true [--live true [--database ...]] [--video ...] [--recordings ...]
+          TrafficCounter.Regression --speed true [--live true [--database ...]] [--video ...] [--recordings ...] [--speed-min-seconds 0.4]
                                     (test drives with known speed against the measured speed, ADR-0035)
           TrafficCounter.Regression --calibrate-speed true [--car-length 4.5] [--video ...] [--recordings ...]
                                     (speed scale from the box widths of cars at the counting line, ADR-0015)
@@ -414,6 +414,11 @@ SiteOptions SiteFor(string video)
     SiteOptions recordedSite = File.Exists(snapshot) ? SiteConfigurationFile.Read(snapshot) : site;
     recordedSite.FarKerbMetersPerImageWidth ??= site.FarKerbMetersPerImageWidth;
     recordedSite.NearKerbMetersPerImageWidth ??= site.NearKerbMetersPerImageWidth;
+    if (options.TryGetValue("speed-min-seconds", out string? minSeconds))
+    {
+        recordedSite.SpeedMinSeconds = float.Parse(minSeconds, CultureInfo.InvariantCulture);
+    }
+
     return band is { } b ? recordedSite.ForCrop(b.Top, b.Bottom) : recordedSite;
 }
 

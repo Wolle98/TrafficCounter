@@ -2,6 +2,7 @@
 @page "/betrieb"
 @using System.Globalization
 @inject TrafficQueries Queries
+@inject SelectedRange Range
 
 <PageTitle>@L["App.PageTitle", L["Nav.Operations"]]</PageTitle>
 
@@ -88,7 +89,11 @@ else if (_camera is not null)
 
     private static string ShortVersion(string version) => version.Split('+') is [string number, string commit] ? $"{number} ({commit[..Math.Min(7, commit.Length)]})" : version;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        (_from, _to) = Range.Or(_from, _to);
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {

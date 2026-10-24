@@ -134,8 +134,11 @@ internal sealed partial class CountingWorker(
         int processedInMinute = 0;
         int detectedInMinute = 0;
 
+        string cameraName = _options.Source.Name is { Length: > 0 } name ? name
+            : _options.Source.Type == SourceType.Usb && _options.Source.Usb.DeviceName is { Length: > 0 } device ? device
+            : source.Description;
         void Event(SystemEventKind kind, EventSeverity severity, string message) =>
-            writer.Enqueue(new SystemEventRecord(cameraId, periodId, time.GetLocalNow(), kind, severity, message));
+            writer.Enqueue(new SystemEventRecord(cameraId, periodId, time.GetLocalNow(), kind, severity, $"{cameraName}: {message}"));
 
         try
         {

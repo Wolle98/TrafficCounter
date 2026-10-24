@@ -106,6 +106,12 @@ public sealed class SiteOptions
     public float SpeedZoneFraction { get; set; } = 0.2f;
 
     /// <summary>
+    /// Shortest observation inside the speed zone that still gives a speed, in seconds. 0.4 s left fast cars on the near
+    /// lane without a speed; 0.25 s still needs at least five positions (MinSamples), at 15 fps about 0.27 s.
+    /// </summary>
+    public float SpeedMinSeconds { get; set; } = 0.25f;
+
+    /// <summary>
     /// Site coordinates for the sun position (day/dusk/night, ADR-0017). One decimal (about 10 km) is enough;
     /// the precision is the operator's choice. Location data – private configuration only.
     /// </summary>
@@ -252,6 +258,6 @@ public sealed class SiteOptions
         MinTrackFrames: MinTrackFrames,
         Speed: FarKerbMetersPerImageWidth is float far && NearKerbMetersPerImageWidth is float near
             && FarKerb is float farKerb && NearKerb is float nearKerb
-            ? new SpeedSettings(far / frame.Width, near / frame.Width, farKerb, nearKerb, ZonePixels: SpeedZoneFraction * frame.Width)
+            ? new SpeedSettings(far / frame.Width, near / frame.Width, farKerb, nearKerb, ZonePixels: SpeedZoneFraction * frame.Width, MinSeconds: SpeedMinSeconds)
             : null);
 }

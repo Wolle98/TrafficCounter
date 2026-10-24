@@ -103,6 +103,7 @@ table.data th { background: #eef1f5; font-weight: 600; }
 table.data td.num, table.data th.num { text-align: center; }
 table.data td.num { font-variant-numeric: tabular-nums; }
 table.data td.estimate { color: var(--muted); font-style: italic; cursor: help; }
+table.data tr.total td { font-weight: 600; border-top: 2px solid var(--line); }
 table.data tr.warning td { background: #fff8ec; }
 table.data tr.error td { background: #fdeceb; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: .5rem; }

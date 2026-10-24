@@ -2,6 +2,7 @@
 @page "/zeitraum"
 @using System.Globalization
 @inject TrafficQueries Queries
+@inject SelectedRange Range
 
 <PageTitle>@L["App.PageTitle", L["Nav.Period"]]</PageTitle>
 
@@ -190,7 +191,11 @@ else if (_buckets.Count > 0)
     private string ExcelLink => string.Create(CultureInfo.InvariantCulture,
         $"export.xlsx?from={_from:yyyy-MM-dd}&to={_to:yyyy-MM-dd}");
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        (_from, _to) = Range.Or(_from, _to);
+        await LoadAsync();
+    }
 
     private void Toggle(VehicleClass vehicleClass, bool on)
     {

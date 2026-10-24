@@ -1,5 +1,7 @@
-@* Period selection: two date fields plus quick buttons; a quick button sets the range and applies it at once. *@
+@* Period selection: two date fields plus quick buttons; a quick button sets the range and applies it at once. The
+   choice is kept for the other pages (SelectedRange). *@
 @inject TrafficQueries Queries
+@inject SelectedRange Range
 
 <div class="date-range">
     <label>@L["Range.From"] <input type="date" value="@From.ToString("yyyy-MM-dd")" @onchange="e => SetFrom(e.Value)" /></label>
@@ -63,6 +65,7 @@
         if (DateTime.TryParse(value as string, out DateTime date))
         {
             From = date;
+            Range.Set(From, To);
             await FromChanged.InvokeAsync(date);
         }
     }
@@ -72,6 +75,7 @@
         if (DateTime.TryParse(value as string, out DateTime date))
         {
             To = date;
+            Range.Set(From, To);
             await ToChanged.InvokeAsync(date);
         }
     }
@@ -80,6 +84,7 @@
     {
         From = from;
         To = to;
+        Range.Set(from, to);
         await FromChanged.InvokeAsync(from);
         await ToChanged.InvokeAsync(to);
         await OnApply.InvokeAsync();

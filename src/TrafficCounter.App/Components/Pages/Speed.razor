@@ -2,6 +2,7 @@
 @page "/geschwindigkeit"
 @using System.Globalization
 @inject TrafficQueries Queries
+@inject SelectedRange Range
 
 <PageTitle>@L["App.PageTitle", L["Nav.Speed"]]</PageTitle>
 
@@ -67,7 +68,7 @@ else if (_camera is not null && _summary is not null)
                 {
                     <th class="num">@L.ClassName(vehicleClass)</th>
                 }
-                <th class="num">@L["Common.All"]</th>
+                <th class="num" colspan="2">@L["Common.All"]</th>
             </tr>
         </thead>
         <tbody>
@@ -79,11 +80,21 @@ else if (_camera is not null && _summary is not null)
                     @foreach ((VehicleClass vehicleClass, _) in ClassesWithSpeeds)
                     {
                         int count = inBand.Count(p => p.Class == vehicleClass);
-                        <td class="num">@(count == 0 ? "" : WithShare(count, WithSpeed.Count(p => p.Class == vehicleClass)))</td>
+                        <td class="num">@(count == 0 ? "" : count.ToString("N0", Culture))</td>
                     }
-                    <td class="num"><strong>@WithShare(inBand.Count, WithSpeed.Count())</strong></td>
+                    <td class="num"><strong>@inBand.Count.ToString("N0", Culture)</strong></td>
+                    <td class="num">@Share(inBand.Count, WithSpeed.Count())</td>
                 </tr>
             }
+            <tr class="total">
+                <td>@L["Table.Total"]</td>
+                @foreach ((VehicleClass vehicleClass, _) in ClassesWithSpeeds)
+                {
+                    <td class="num">@WithSpeed.Count(p => p.Class == vehicleClass).ToString("N0", Culture)</td>
+                }
+                <td class="num"><strong>@WithSpeed.Count().ToString("N0", Culture)</strong></td>
+                <td class="num">@Share(WithSpeed.Count(), WithSpeed.Count())</td>
+            </tr>
         </tbody>
     </table>
     <p class="hint">@L["Speed.BandHint"]</p>
@@ -117,9 +128,7 @@ else if (_camera is not null && _summary is not null)
 
     private IEnumerable<PassageRow> WithSpeed => _passages.Where(p => p.SpeedKmh is > 0);
 
-    /// <summary>A count with its share of the column total, e.g. "12 (3.45 %)".</summary>
-    private static string WithShare(int count, int total) =>
-        total == 0 ? count.ToString("N0", Culture) : $"{count.ToString("N0", Culture)} ({(count / (double)total).ToString("P2", Culture)})";
+    private static string Share(int count, int total) => total == 0 ? "" : (count / (double)total).ToString("P2", Culture);
 
     /// <summary>Classes that have at least one speed in the period, in display order.</summary>
     private IEnumerable<(VehicleClass Class, string Color)> ClassesWithSpeeds =>
@@ -151,7 +160,11 @@ else if (_camera is not null && _summary is not null)
         }
     }
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        (_from, _to) = Range.Or(_from, _to);
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {

@@ -40,6 +40,7 @@ else
 }
 
 builder.Services.AddSingleton<TrafficQueries>();
+builder.Services.AddScoped<SelectedRange>();
 builder.Services.AddLocalization(o => o.ResourcesPath = "Resources");
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
