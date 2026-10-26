@@ -1,6 +1,6 @@
 # ADR-0013: Vehicle classes – COCO mapping, then an own model
 
-- **Status:** accepted 2026-10-18; the point "trailers enclosed in one box with the towing vehicle" (Decision, Combinations) is superseded by [ADR-0039](0039-labelling-rules.md)
+- **Status:** accepted 2026-10-18; the point "trailers enclosed in one box with the towing vehicle" (Decision, Combinations) is superseded by [ADR-0039](0039-labelling-rules.md); extended by [ADR-0046](0046-two-wheelers-and-split-tracks.md) (two-wheelers are never trailers)
 - **Date:** 2026-09-26
 - **Stage:** 3
 

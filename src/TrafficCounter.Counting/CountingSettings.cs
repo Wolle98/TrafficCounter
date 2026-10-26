@@ -28,6 +28,12 @@ namespace TrafficCounter.Counting;
 /// </param>
 /// <param name="Trailers">Detection of trailers towed by another vehicle; null uses the defaults.</param>
 /// <param name="Speed">Scale of the road for speed estimates (stage 5); null: no speeds.</param>
+/// <param name="DuplicateSeconds">
+/// A passage of a motor vehicle crossing within this time of another one in the same direction and lane is the same
+/// vehicle split into two tracks (a long bus close to the camera); it is not counted again. Two real vehicles in one
+/// lane cannot be that close: at 30 km/h, 0.4 s are 3.3 m. Two-wheelers are exempt, they ride side by side.
+/// </param>
+/// <param name="DuplicateLineTolerance">Difference in position along the line (0..1) that still counts as one lane.</param>
 public sealed record CountingSettings(
     LineSegment Line,
     float HysteresisPixels = 8f,
@@ -36,7 +42,9 @@ public sealed record CountingSettings(
     int MinTrackFrames = 3,
     float EmitDelaySeconds = 3f,
     TrailerSettings? Trailers = null,
-    SpeedSettings? Speed = null);
+    SpeedSettings? Speed = null,
+    float DuplicateSeconds = 0.4f,
+    float DuplicateLineTolerance = 0.08f);
 
 /// <summary>
 /// Speed from the ground point (box bottom center) of a track near the counting line (ADR-0015): a line is fitted

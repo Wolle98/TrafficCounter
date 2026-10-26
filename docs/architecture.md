@@ -6,7 +6,7 @@
 flowchart LR
     CAM[IP cam RTSP / USB / video file] --> SRC[IFrameSource<br/>capture thread, latest frame]
     SRC --> PRE[Pre-processing<br/>ROI mask, letterbox]
-    PRE --> DET[IObjectDetector<br/>YOLO / ONNX Runtime<br/>DirectML, OpenVINO or CPU]
+    PRE --> DET[IObjectDetector<br/>YOLO / ONNX Runtime<br/>DirectML, OpenVINO, TensorRT/CUDA or CPU]
     DET --> TRK[ITracker<br/>ByteTrack]
     TRK --> CNT[CountingEngine<br/>counting line, direction,<br/>class voting, speed]
     CNT --> SINK[BufferedStoreWriter<br/>buffered, offline file]
@@ -43,7 +43,7 @@ flowchart TD
 
     subgraph FRAME["2 Per frame (counting thread, CountingPipeline)"]
         BUF --> FPS{"MaxFps<br/>e.g. 15 fps"}
-        FPS -- "processed" --> BAND["Band crop<br/>BandTop/BandBottom of the site configuration"]
+        FPS -- "processed" --> BAND["Band crop<br/>BandTop/BandBottom/BandLeft/BandRight<br/>of the site configuration"]
         BAND --> GATE{"MotionGate<br/>motion in the band?<br/>at most MaxSkipSeconds without detection"}
         GATE -- "no motion" --> SKIP["Detector skipped"]
         GATE -- "motion" --> ENH["ImageEnhancer<br/>optional: CLAHE, gamma, grayscale"]
@@ -52,20 +52,24 @@ flowchart TD
     subgraph INFER["3 Detection (YoloOnnxDetector)"]
         ENH --> LB["Letterbox + resize<br/>to model input, e.g. 640x192<br/>Linear or Area"]
         LB --> ORT["ONNX Runtime<br/>YOLO11 model (.onnx)"]
-        ORT --> EP{"Execution provider"}
-        EP --> OV["OpenVINO<br/>Intel GPU/NPU/CPU (notebook)"]
-        EP --> DML["DirectML<br/>any DirectX 12 GPU (PC)"]
-        EP --> CPU["CPU"]
-        OV --> POST["Post-processing<br/>confidence threshold, NMS,<br/>COCO class -> vehicle class"]
+        ORT --> EP{"Execution provider<br/>chosen by the build"}
+        EP --> OV["OpenVINO<br/>Intel GPU/NPU/CPU (notebook)<br/>-p:InferenceBackend=OpenVino"]
+        EP --> DML["DirectML<br/>any DirectX 12 GPU (PC)<br/>default build"]
+        EP --> TRT["TensorRT, then CUDA<br/>NVIDIA GPU<br/>-p:InferenceBackend=Nvidia"]
+        EP --> CPU["CPU<br/>fallback of every build"]
+        OV --> POST["Post-processing<br/>confidence threshold, NMS,<br/>model class -> vehicle class<br/>(COCO or own model; Trailer unmapped)"]
         DML --> POST
+        TRT --> POST
         CPU --> POST
         POST --> IGN["Ignore zones<br/>parked vehicles, judged by ground point"]
     end
 
     subgraph TRACK["4 Tracking and counting"]
         IGN --> BT["ByteTracker<br/>Kalman filter, two-stage matching,<br/>day/night thresholds, track stitching"]
-        BT --> CE["CountingEngine<br/>counting line, direction A/B,<br/>class vote over the track, trailers,<br/>speed from the scale at the line"]
-        CE --> PAS["Passage<br/>time, direction, class, speed, lighting"]
+        BT --> CE["CountingEngine<br/>counting line, direction A/B,<br/>class vote over the track,<br/>trailers (never two-wheelers),<br/>speed from the scale at the line"]
+        CE --> DUP{"Same vehicle again?<br/>motor vehicle within 0.4 s,<br/>same direction and lane"}
+        DUP -- "no" --> PAS["Passage<br/>time, direction, class, speed, lighting"]
+        DUP -- "yes" --> DROP["not counted<br/>(long vehicle split into two tracks)"]
     end
 
     subgraph WATCH["5 Monitoring per minute (CountingWorker)"]
@@ -84,8 +88,8 @@ flowchart TD
         PAS --> BSW["BufferedStoreWriter<br/>batches, fallback file if the DB is unreachable"]
         MIN --> BSW
         DRIFT --> BSW
-        BSW --> PG[("PostgreSQL on the NAS<br/>counting notebook")]
-        BSW --> SQL[("SQL Server<br/>PC")]
+        BSW --> PG[("PostgreSQL on the NAS<br/>main database")]
+        BSW --> SQL[("SQL Server<br/>PC, on demand")]
         WX["Bright Sky / DWD"] --> WW["WeatherWorker<br/>hourly"] --> BSW
         LOG["Log file<br/>Serilog, one line per minute and passage"]
     end
@@ -94,26 +98,33 @@ flowchart TD
 
     subgraph SIDE["Side paths (copies of the frames)"]
         REC["ScheduledRecorder<br/>reference videos by schedule.json, H.264"]
-        SMP["SampleCollector<br/>anonymised training images"]
+        SMP["SampleCollector<br/>anonymised training images,<br/>person model only on sampled frames"]
     end
     BUF -.-> REC
-    CE -.-> SMP
+    PAS -.-> SMP
+
+    CSW["CameraSceneWorker<br/>daily 03:05: day/night scene times<br/>from sunrise and sunset (ISAPI)"] -.-> IPCAM
 
     subgraph OFFLINE["7 Tools and analysis"]
-        SYNC["TrafficCounter.Sync<br/>two-way sync, fill-degraded"]
+        SYNC["TrafficCounter.Sync<br/>two-way sync, fill-degraded, corrections"]
+        FILL["Sync-FillDegraded.ps1<br/>hourly task: sync, fill, sync"]
+        CAM2[("Second camera's database<br/>same street, same model")]
         APP["TrafficCounter.App<br/>Blazor Server, analysis"]
         REG["TrafficCounter.Regression<br/>reference videos against hand counts"]
         ANN["TrafficCounter.Annotator<br/>hand counts"]
         LS["Label Studio<br/>labelling the training images"]
     end
     PG <--> SYNC <--> SQL
-    SQL --> APP
+    FILL --> SYNC
+    CAM2 -. "impaired minutes" .-> SYNC
+    PG --> APP
+    SQL -.-> APP
     REC -.-> ANN -.-> REG
     REC -.-> REG
     SMP -.-> LS
 ```
 
-Step 2 and the motion gate are described in [ADR-0029](adr/0029-computing-load.md), the side paths in [ADR-0026](adr/0026-targeted-collection-of-training-samples.md) and [ADR-0032](adr/0032-recordings-by-the-service.md).
+Step 2 and the motion gate are described in [ADR-0029](adr/0029-computing-load.md), the band edges in [ADR-0040](adr/0040-band-sides.md), the execution providers in [ADR-0007](adr/0007-hardware-acceleration.md), [ADR-0029](adr/0029-computing-load.md) and [ADR-0041](adr/0041-tensorrt-backend.md), trailers, two-wheelers and split tracks in [ADR-0013](adr/0013-vehicle-classes.md) and [ADR-0046](adr/0046-two-wheelers-and-split-tracks.md), the camera scene times in [ADR-0042](adr/0042-camera-scene-times.md), the side paths in [ADR-0026](adr/0026-targeted-collection-of-training-samples.md) and [ADR-0032](adr/0032-recordings-by-the-service.md), the databases and the fill from a second camera in [ADR-0030](adr/0030-postgresql-and-synchronisation.md) and [operations.md](operations.md).
 
 ## Project structure (public repo)
 

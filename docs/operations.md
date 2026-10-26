@@ -180,6 +180,7 @@ dotnet run --project src/TrafficCounter.Sync -- sync --direction to-postgres
 ```
 
 - Missing rows are transferred. Of running or finished periods, the newer state wins. Hourly weather is copied along.
+- **Second camera:** if another camera counts the same street into a database of its own, `TrafficCounter.Sync fill-degraded` fills the minutes the counting camera stored as not fully measured with its counts. `tools/deploy/Sync-FillDegraded.ps1` runs sync, fill and sync again over the last 48 hours, e.g. hourly as a scheduled task; `-NotBefore` keeps it away from times the two cameras counted with different models. Its log is `%LOCALAPPDATA%\TrafficCounter\sync-fill-degraded.log`.
 - Pending migrations are applied to both databases first.
 - Hand-counted recordings are replaced on the other side after a new import.
 - **Deletions are not transferred.**

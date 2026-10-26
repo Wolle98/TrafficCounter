@@ -16,7 +16,7 @@ Format and process: [ADR-0001](0001-use-adrs.md) · Template: [0000-template.md]
 | [0010](0010-persistence-sql-server-ef-core.md) | Persistence in SQL Server Express with EF Core, individual events | accepted | 1 |
 | [0011](0011-frame-source-abstraction.md) | Abstraction of frame sources, "latest frame" strategy | accepted | 1 |
 | [0012](0012-runtime-worker-service.md) | Runtime model worker service (console and Windows service) | accepted | 1 |
-| [0013](0013-vehicle-classes.md) | Vehicle classes – COCO mapping, then an own model | accepted, trailer box superseded by 0039 | 3 |
+| [0013](0013-vehicle-classes.md) | Vehicle classes – COCO mapping, then an own model | accepted, trailer box superseded by 0039, extended by 0046 | 3 |
 | [0014](0014-gui-technology.md) | Technology of the analysis GUI | accepted | 4 |
 | [0015](0015-speed-measurement.md) | Speed measurement via homography | accepted | 5 |
 | [0016](0016-opencvsharp.md) | OpenCvSharp4 as the OpenCV binding | accepted | 1 |
@@ -49,3 +49,4 @@ Format and process: [ADR-0001](0001-use-adrs.md) · Template: [0000-template.md]
 | [0043](0043-avalonia-annotator.md) | Avalonia for the annotator | accepted | 1 |
 | [0044](0044-license-exception-proprietary-runtimes.md) | Additional AGPL permission for proprietary runtime libraries | accepted | 0 |
 | [0045](0045-public-snapshots.md) | Public repository as checked snapshots of a private working repository | accepted | 0 |
+| [0046](0046-two-wheelers-and-split-tracks.md) | Two-wheelers are never trailers; one vehicle split into two tracks is counted once | accepted | 1 |

@@ -30,6 +30,8 @@ switch (args.FirstOrDefault())
         return await CorrectPassagesAsync(options, newClass: null);
     case "set-class":
         return await CorrectPassagesAsync(options, Enum.Parse<VehicleClass>(options["class"], ignoreCase: true));
+    case "set-trailers":
+        return await SetTrailersAsync(options);
     case "add-alongside":
         return await AddAlongsideAsync(options);
     case "fill-degraded":
@@ -73,6 +75,9 @@ switch (args.FirstOrDefault())
               TrafficCounter.Sync set-class --sync-ids <id>[,<id>...] --class <class> [--dry-run true]
                   Corrects single counted passages in both databases, e.g. a pram counted as a motorcycle (delete)
                   or two bicycles counted as a motorcycle (class). The id is the passage's SyncId, the same in both.
+              TrafficCounter.Sync set-trailers --sync-ids <id>[,<id>...] --trailers <n> [--dry-run true]
+                  Corrects the number of trailers of single passages in both databases, e.g. a cyclist riding behind
+                  another that was taken for a trailer (then add-alongside adds the cyclist).
               TrafficCounter.Sync add-alongside --sync-id <id> [--class <class>]
                   Adds a vehicle the counter merged into this passage (e.g. the second of two cyclists side by side):
                   same time, direction and period, in PostgreSQL; the next sync copies it on.
@@ -372,6 +377,27 @@ static async Task<int> CorrectPassagesAsync(Dictionary<string, string> options, 
     return 0;
 }
 
+static async Task<int> SetTrailersAsync(Dictionary<string, string> options)
+{
+    List<Guid> ids = [.. options["sync-ids"].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Guid.Parse)];
+    byte trailers = byte.Parse(options["trailers"], System.Globalization.CultureInfo.InvariantCulture);
+    bool dryRun = options.GetValueOrDefault("dry-run") is "true";
+    if (!dryRun && !await BothReachableAsync())
+    {
+        return 1;
+    }
+
+    foreach (DatabaseProvider provider in new[] { DatabaseProvider.PostgreSql, DatabaseProvider.SqlServer })
+    {
+        await using TrafficCounterDbContext db = Open(provider);
+        IQueryable<VehiclePassage> passages = db.VehiclePassages.Where(p => ids.Contains(p.SyncId));
+        int count = dryRun ? await passages.CountAsync() : await passages.ExecuteUpdateAsync(s => s.SetProperty(p => p.TrailerCount, trailers));
+        Console.WriteLine($"{provider}: {count} of {ids.Count} passages {(dryRun ? "would be " : "")}set to {trailers} trailer(s)");
+    }
+
+    return 0;
+}
+
 static async Task<int> FillDegradedAsync(Dictionary<string, string> options)
 {
     var invariant = System.Globalization.CultureInfo.InvariantCulture;
@@ -446,6 +472,7 @@ static async Task<int> AddAlongsideAsync(Dictionary<string, string> options)
     copy.Id = 0;
     copy.SyncId = Guid.NewGuid();
     copy.PassedAt = original.PassedAt.AddMilliseconds(500); // side by side: practically the same moment
+    copy.TrailerCount = 0; // the trailers, if any, belong to the original
     if (options.TryGetValue("class", out string? vehicleClass))
     {
         copy.VehicleClass = Enum.Parse<VehicleClass>(vehicleClass, ignoreCase: true);

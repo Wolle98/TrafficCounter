@@ -257,6 +257,56 @@ public class CountingEngineTests
         Assert.Equal(TravelDirection.B, events.Single(e => e.TrackId == 2).Direction);
     }
 
+    /// <summary>Several tracks moving together; each frame gives every track's x position.</summary>
+    private static List<VehiclePassageEvent> DriveAll(CountingEngine engine, int frames, Func<int, IEnumerable<TrackedObject>> scene)
+    {
+        List<VehiclePassageEvent> events = [];
+        HashSet<int> ids = [];
+        for (int i = 0; i < frames; i++)
+        {
+            List<TrackedObject> active = [.. scene(i)];
+            ids.UnionWith(active.Select(o => o.TrackId));
+            events.AddRange(engine.Process(new TrackingResult(T0 + (FrameInterval * i), active, [])));
+        }
+
+        events.AddRange(engine.Process(new TrackingResult(T0 + (FrameInterval * frames), [], [.. ids])));
+        return events;
+    }
+
+    [Fact]
+    public void Cyclists_riding_close_behind_each_other_are_both_counted()
+    {
+        // Moving left with a constant 20 px gap for far longer than a coupling needs (issue #2).
+        List<VehiclePassageEvent> events = DriveAll(CreateEngine(), 50, i =>
+            [Obj(1, 1100 - (20 * i), cls: VehicleClass.Bicycle), Obj(2, 1200 - (20 * i), cls: VehicleClass.Bicycle)]);
+
+        Assert.Equal(2, events.Count);
+        Assert.All(events, e => Assert.Equal(0, e.TrailerCount));
+    }
+
+    [Fact]
+    public void Second_track_of_one_long_vehicle_in_the_same_lane_is_not_counted_again()
+    {
+        // A bus split into a front and a rear track that cross the line 0.2 s apart (issue #3).
+        List<VehiclePassageEvent> events = DriveAll(CreateEngine(), 30, i =>
+            [Obj(1, 900 - (40 * i), cls: VehicleClass.Bus), Obj(2, 1100 - (40 * i), cls: VehicleClass.Bus)]);
+
+        VehiclePassageEvent passage = Assert.Single(events);
+        Assert.Equal(VehicleClass.Bus, passage.Class);
+    }
+
+    [Fact]
+    public void Vehicles_crossing_at_the_same_time_in_other_lanes_or_on_two_wheels_are_all_counted()
+    {
+        List<VehiclePassageEvent> cars = DriveAll(CreateEngine(), 30, i =>
+            [Obj(1, 900 - (40 * i), bottomY: 200), Obj(2, 920 - (40 * i), bottomY: 350)]);
+        List<VehiclePassageEvent> cyclistsSideBySide = DriveAll(CreateEngine(), 30, i =>
+            [Obj(1, 900 - (20 * i), bottomY: 300, cls: VehicleClass.Bicycle), Obj(2, 902 - (20 * i), bottomY: 310, cls: VehicleClass.Bicycle)]);
+
+        Assert.Equal(2, cars.Count);
+        Assert.Equal(2, cyclistsSideBySide.Count);
+    }
+
     [Fact]
     public void Flush_emits_pending_passages_and_clears_state()
     {

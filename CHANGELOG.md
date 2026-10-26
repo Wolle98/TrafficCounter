@@ -4,6 +4,22 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.10.8] – 2026-10-26
+
+### Added
+
+- `TrafficCounter.Sync set-trailers`: corrects the number of trailers of single passages in both databases; `add-alongside` no longer copies the trailers of the original.
+- `tools/deploy/Sync-FillDegraded.ps1`: sync, `fill-degraded` from a second camera's database over the last hours and sync again, for a scheduled task.
+
+### Changed
+
+- Architecture diagram: TensorRT/CUDA, band edges, own model classes, two-wheelers and split tracks, camera scene times, PostgreSQL as main database, hourly fill from a second camera.
+
+### Fixed
+
+- Cyclists riding close behind each other are no longer merged as one bicycle with a trailer: two-wheelers are never trailers and never tow one (ADR-0046).
+- A long vehicle split into two tracks (e.g. a bus close to the camera) is counted once: a second motor-vehicle passage within 0.4 s in the same direction and lane is dropped (`CountingSettings.DuplicateSeconds`, `DuplicateLineTolerance`, ADR-0046).
+
 ## [0.10.7] – 2026-10-24
 
 ### Added

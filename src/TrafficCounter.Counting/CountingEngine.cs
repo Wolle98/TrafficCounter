@@ -12,6 +12,14 @@ public sealed class CountingEngine(CountingSettings settings)
 {
     private readonly Dictionary<int, TrackState> _tracks = [];
     private readonly TrailerSettings _trailers = settings.Trailers ?? TrailerSettings.Default;
+    private readonly List<VehiclePassageEvent> _recent = [];
+
+    /// <summary>
+    /// Bicycles, e-scooters and motorcycles neither tow nor are trailers: riders in line keep a constant gap like a
+    /// coupling and would otherwise be counted as one with a trailer.
+    /// </summary>
+    private static bool IsTwoWheeler(VehicleClass vehicleClass) =>
+        vehicleClass is VehicleClass.Bicycle or VehicleClass.EScooter or VehicleClass.Motorcycle;
 
     public int ActiveTrackCount => _tracks.Count;
 
@@ -50,7 +58,7 @@ public sealed class CountingEngine(CountingSettings settings)
                 && state.DistanceBeyondLine >= settings.EmitDistancePixels
                 && (result.Timestamp - state.Crossing!.Value.At).TotalSeconds >= settings.EmitDelaySeconds)
             {
-                passages.Add(Emit(state));
+                Add(passages, Emit(state));
             }
         }
 
@@ -58,7 +66,7 @@ public sealed class CountingEngine(CountingSettings settings)
         {
             if (_tracks.TryGetValue(trackId, out TrackState? state) && IsReadyToEmit(state) && state.EndedOnFarSide)
             {
-                passages.Add(Emit(state));
+                Add(passages, Emit(state));
             }
 
             _tracks.Remove(trackId);
@@ -70,10 +78,32 @@ public sealed class CountingEngine(CountingSettings settings)
     /// <summary>Emits all counted but not yet emitted passages, e.g. on shutdown, and resets the engine.</summary>
     public IReadOnlyList<VehiclePassageEvent> Flush()
     {
-        List<VehiclePassageEvent> passages =
-            [.. _tracks.Values.Where(s => IsReadyToEmit(s) && s.EndedOnFarSide).Select(Emit)];
+        List<VehiclePassageEvent> passages = [];
+        foreach (TrackState state in _tracks.Values.Where(s => IsReadyToEmit(s) && s.EndedOnFarSide).ToList())
+        {
+            Add(passages, Emit(state));
+        }
+
         _tracks.Clear();
+        _recent.Clear();
         return passages;
+    }
+
+    /// <summary>Adds a passage unless it is a second track of a vehicle already counted (see <see cref="CountingSettings.DuplicateSeconds"/>).</summary>
+    private void Add(List<VehiclePassageEvent> passages, VehiclePassageEvent passage)
+    {
+        _recent.RemoveAll(r => (passage.PassedAt - r.PassedAt).Duration().TotalSeconds > 10);
+        bool duplicate = !IsTwoWheeler(passage.Class) && _recent.Any(r =>
+            r.Direction == passage.Direction && !IsTwoWheeler(r.Class)
+            && (passage.PassedAt - r.PassedAt).Duration().TotalSeconds <= settings.DuplicateSeconds
+            && MathF.Abs(passage.LinePosition - r.LinePosition) <= settings.DuplicateLineTolerance);
+        if (duplicate)
+        {
+            return;
+        }
+
+        _recent.Add(passage);
+        passages.Add(passage);
     }
 
     private bool IsReadyToEmit(TrackState state) =>
@@ -156,12 +186,18 @@ public sealed class CountingEngine(CountingSettings settings)
                 continue;
             }
 
+            if (IsTwoWheeler(followerState.LeadingClass))
+            {
+                continue;
+            }
+
             (int LeaderId, float Gap, float Scale)? best = null;
             foreach (TrackedObject leader in active)
             {
                 TrackState leaderState = _tracks[leader.TrackId];
                 if (leader.TrackId != follower.TrackId
                     && leaderState.LeaderId != follower.TrackId
+                    && !IsTwoWheeler(leaderState.LeadingClass)
                     && CouplingGap(follower.Box, followerState.VelocityX, leader.Box, leaderState.VelocityX) is float gap
                     && (best is null || gap < best.Value.Gap))
                 {
@@ -186,6 +222,13 @@ public sealed class CountingEngine(CountingSettings settings)
         TrackedObject? leader = active.FirstOrDefault(a => a.TrackId == leaderId);
         if (leader is null || !_tracks.TryGetValue(leaderId, out TrackState? leaderState) || leaderState.Emitted)
         {
+            return;
+        }
+
+        // The class vote can turn while the tracks are coupled: a two-wheeler is never a trailer.
+        if (IsTwoWheeler(followerState.LeadingClass) || IsTwoWheeler(leaderState.LeadingClass))
+        {
+            followerState.Release();
             return;
         }
 
@@ -273,6 +316,15 @@ public sealed class CountingEngine(CountingSettings settings)
 
         public void Vote(VehicleClass vehicleClass, float confidence) =>
             _votes[vehicleClass] = _votes.GetValueOrDefault(vehicleClass) + confidence;
+
+        /// <summary>The class currently winning the vote.</summary>
+        public VehicleClass LeadingClass => _votes.Count == 0 ? VehicleClass.Unknown : _votes.MaxBy(v => v.Value).Key;
+
+        public void Release()
+        {
+            LeaderId = null;
+            _candidateLeader = null;
+        }
 
         public void UpdateVelocity(float x, DateTimeOffset timestamp)
         {
