@@ -308,6 +308,21 @@ public class CountingEngineTests
     }
 
     [Fact]
+    public void A_detected_trailer_is_counted_with_its_towing_vehicle_and_never_on_its_own()
+    {
+        // Car moving left, a box of class Trailer 20 px behind it; then a trailer alone (ADR-0047).
+        List<VehiclePassageEvent> combination = DriveAll(CreateEngine(), 50, i =>
+            [Obj(1, 1100 - (20 * i)), Obj(2, 1200 - (20 * i), cls: VehicleClass.Trailer)]);
+        List<VehiclePassageEvent> trailerAlone = DriveAll(CreateEngine(), 50, i =>
+            [Obj(1, 1100 - (20 * i), cls: VehicleClass.Trailer)]);
+
+        VehiclePassageEvent passage = Assert.Single(combination);
+        Assert.Equal(VehicleClass.Car, passage.Class);
+        Assert.Equal(1, passage.TrailerCount);
+        Assert.Empty(trailerAlone);
+    }
+
+    [Fact]
     public void Flush_emits_pending_passages_and_clears_state()
     {
         CountingEngine engine = CreateEngine();

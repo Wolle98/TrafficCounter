@@ -20,4 +20,11 @@ public enum VehicleClass : byte
     /// meant to learn them (ADR-0039).
     /// </summary>
     EScooter = 8,
+
+    /// <summary>
+    /// A trailer detected on its own by the own model. Only inside the counting: it is tracked so the counting engine
+    /// can attach it to the vehicle in front (that passage's trailer count), and it is never counted or stored as a
+    /// vehicle of its own (ADR-0047).
+    /// </summary>
+    Trailer = 9,
 }

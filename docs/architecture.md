@@ -57,7 +57,7 @@ flowchart TD
         EP --> DML["DirectML<br/>any DirectX 12 GPU (PC)<br/>default build"]
         EP --> TRT["TensorRT, then CUDA<br/>NVIDIA GPU<br/>-p:InferenceBackend=Nvidia"]
         EP --> CPU["CPU<br/>fallback of every build"]
-        OV --> POST["Post-processing<br/>confidence threshold, NMS,<br/>model class -> vehicle class<br/>(COCO or own model; Trailer unmapped)"]
+        OV --> POST["Post-processing<br/>confidence threshold, NMS,<br/>model class -> vehicle class<br/>(COCO or own model; Trailer only<br/>counted with its towing vehicle)"]
         DML --> POST
         TRT --> POST
         CPU --> POST

@@ -88,10 +88,11 @@ public sealed class YoloDetectorOptions
         ["motorcycle"] = VehicleClass.Motorcycle,
         ["bicycle"] = VehicleClass.Bicycle,
 
-        // Classes of the own model (ADR-0039); "Trailer" stays unmapped until the counting handles it.
+        // Classes of the own model (ADR-0039). A trailer is tracked, but only ever counted with its towing vehicle (ADR-0047).
         ["van"] = VehicleClass.Van,
         ["agricultural"] = VehicleClass.Agricultural,
         ["escooter"] = VehicleClass.EScooter,
+        ["trailer"] = VehicleClass.Trailer,
     };
 }
 

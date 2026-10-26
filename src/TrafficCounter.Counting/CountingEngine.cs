@@ -106,8 +106,10 @@ public sealed class CountingEngine(CountingSettings settings)
         passages.Add(passage);
     }
 
+    // A track detected as a trailer is never a vehicle of its own, even if no towing vehicle was found (ADR-0047).
     private bool IsReadyToEmit(TrackState state) =>
-        !state.Emitted && !state.IsTrailer && state.Crossing is not null && state.Frames >= settings.MinTrackFrames;
+        !state.Emitted && !state.IsTrailer && state.LeadingClass != VehicleClass.Trailer
+        && state.Crossing is not null && state.Frames >= settings.MinTrackFrames;
 
     private VehiclePassageEvent Emit(TrackState state)
     {

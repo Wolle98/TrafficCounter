@@ -4,6 +4,16 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.10.9] – 2026-10-26
+
+### Changed
+
+- Regression `--trace` shows the trailer count of each passage.
+
+### Fixed
+
+- Trailers detected by the own model as class `Trailer` were dropped, so a car with a trailer was stored without it. They are now tracked and only counted with the vehicle in front (`TrailerCount`), never on their own (ADR-0047).
+
 ## [0.10.8] – 2026-10-26
 
 ### Added

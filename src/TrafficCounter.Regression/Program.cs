@@ -624,7 +624,7 @@ static void Trace(string video, SiteOptions site, IObjectDetector detector, stri
     }
 
     static string Describe(VehiclePassageEvent p) => string.Create(CultureInfo.InvariantCulture,
-        $"PASSAGE #{p.TrackId} {p.Direction} {p.Class} speed {(p.SpeedKmh is float kmh ? $"{kmh:0.0} km/h" : "none")}")
+        $"PASSAGE #{p.TrackId} {p.Direction} {p.Class} trailers {p.TrailerCount} speed {(p.SpeedKmh is float kmh ? $"{kmh:0.0} km/h" : "none")}")
         + (p.Track is { } t ? string.Create(CultureInfo.InvariantCulture, $" from {t.SpeedSamples} positions over {t.SpeedSeconds:0.00} s in the zone, track {t.TrackSeconds:0.00} s from {t.FirstDistance:0} to {t.LastDistance:0} px") : "");
 
     static TimeSpan ParseTime(string text)
