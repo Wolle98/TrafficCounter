@@ -73,7 +73,7 @@ public sealed class SqlTrafficStore(IDbContextFactory<TrafficCounterDbContext> c
             OccurredAt = start.StartedAt,
             Kind = SystemEventKind.Started,
             Severity = EventSeverity.Information,
-            Message = $"Started {start.AppVersion} on {start.MachineName}, model {start.ModelName ?? "-"}, {start.NominalFps:0.#} fps.",
+            Message = $"{(start.SourceName is { Length: > 0 } source ? source + ": " : "")}Started {start.AppVersion} on {start.MachineName}, model {start.ModelName ?? "-"}, {start.NominalFps:0.#} fps.",
         });
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);

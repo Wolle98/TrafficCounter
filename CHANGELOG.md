@@ -4,6 +4,19 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.10.11] – 2026-10-26
+
+### Added
+
+- The start and sample collection events name the camera (`Source:Name`), like the other events of a run, so two cameras counting one street can be told apart.
+- Annotator: Shift with "Previous"/"Next" jumps to the previous/next entry that is not a car.
+
+### Fixed
+
+- Annotator: "Next" sometimes found the same entry again when the recording had a gap before it; it now steps on from the selected entry.
+- Annotator: a video that was only opened no longer gets an empty annotation file, which marked it as annotated in the file list.
+- Annotator: number pad keys other than Num4/Num6 no longer set the class, so grazing one after counting a car cannot change it.
+
 ## [0.10.10] – 2026-10-26
 
 ### Fixed

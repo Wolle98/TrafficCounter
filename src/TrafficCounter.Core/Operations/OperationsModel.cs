@@ -70,7 +70,7 @@ public enum EventSeverity : byte
 /// <summary>Camera identity and the display names of its two directions.</summary>
 public sealed record CameraRegistration(string Name, string DirectionAName, string DirectionBName);
 
-/// <summary>Information stored when a counting run starts (ADR-0024).</summary>
+/// <summary>Information stored when a counting run starts (ADR-0024). <c>SourceName</c> prefixes the start event, like the other events of the run.</summary>
 public sealed record OperatingPeriodStart(
     string CameraName,
     DateTimeOffset StartedAt,
@@ -78,7 +78,8 @@ public sealed record OperatingPeriodStart(
     string MachineName,
     double NominalFps,
     string? ModelName,
-    string? ConfigHash);
+    string? ConfigHash,
+    string? SourceName = null);
 
 /// <summary>Anything the counter persists. Serialisable for the offline fallback file.</summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]

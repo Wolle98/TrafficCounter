@@ -203,7 +203,7 @@ internal sealed class MainWindow : Window
         };
         bottom.Children.Add(_timeline);
         var navigation = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center };
-        navigation.Children.Add(Btn("|◀ Previous", () => JumpToEntry(forward: false)));
+        navigation.Children.Add(ShiftBtn("|◀ Previous", shift => JumpToEntry(forward: false, skipCars: shift)));
         navigation.Children.Add(Btn("−5 s", () => SeekBy(-(int)(5 * Fps))));
         navigation.Children.Add(Btn("−1 s", () => SeekBy(-(int)Fps)));
         navigation.Children.Add(Btn("−1 frame", () => StepFrame(-1)));
@@ -211,7 +211,7 @@ internal sealed class MainWindow : Window
         navigation.Children.Add(Btn("+1 frame", () => StepFrame(1)));
         navigation.Children.Add(Btn("+1 s", () => SeekBy((int)Fps)));
         navigation.Children.Add(Btn("+5 s", () => SeekBy((int)(5 * Fps))));
-        navigation.Children.Add(Btn("Next ▶|", () => JumpToEntry(forward: true)));
+        navigation.Children.Add(ShiftBtn("Next ▶|", shift => JumpToEntry(forward: true, skipCars: shift)));
         bottom.Children.Add(navigation);
 
         var speedLine = new DockPanel();
@@ -299,6 +299,16 @@ internal sealed class MainWindow : Window
     {
         var button = Localize(new Button { Focusable = false, Padding = new Thickness(8, 3), MinHeight = 28 }, b => b.Content = Localizer.T(text));
         button.Click += (_, _) => action();
+        return button;
+    }
+
+    /// <summary>A button whose action learns whether Shift was held; the click event itself carries no modifiers.</summary>
+    private Button ShiftBtn(string text, Action<bool> action)
+    {
+        bool shift = false;
+        Button button = Btn(text, () => action(shift));
+        button.AddHandler(PointerPressedEvent, (_, e) => shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift), RoutingStrategies.Tunnel);
+        Localize(button, b => ToolTip.SetTip(b, Localizer.T("Shift: skip cars")));
         return button;
     }
 
@@ -640,9 +650,15 @@ internal sealed class MainWindow : Window
 
     private void Undo() => Do(m => m.UndoSelected());
 
-    private void JumpToEntry(bool forward)
+    private void JumpToEntry(bool forward, bool skipCars)
     {
-        if (_model is null || _player is null || _model.Neighbour(_player.Offset, forward) is not int index)
+        if (_model is null || _player is null)
+        {
+            return;
+        }
+
+        bool atSelected = _model.Selected is { } selected && _player.FrameAt(selected.Offset) == _player.Position;
+        if (_model.Neighbour(_player.Offset, forward, atSelected, skipCars) is not int index)
         {
             return;
         }
@@ -726,6 +742,8 @@ internal sealed class MainWindow : Window
             case Key.NumPad6:
                 AddEntry(ImageMotion.LeftToRight, VehicleClass.Car, askSpeed: true);
                 return;
+            case >= Key.NumPad0 and <= Key.NumPad9:
+                return; // only Num4/Num6 count; grazing a neighbouring key must not change the class
             case Key.Delete:
                 Do(m => m.DeleteNear(_player!.Offset));
                 return;

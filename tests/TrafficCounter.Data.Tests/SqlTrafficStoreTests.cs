@@ -82,6 +82,19 @@ public sealed class SqlTrafficStoreTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Start_event_names_the_camera()
+    {
+        SqlTrafficStore store = CreateStore();
+        int camera = await store.EnsureCameraAsync(Camera, Ct);
+
+        await store.StartPeriodAsync(camera, Start(Samples.T0) with { SourceName = "NC400" }, Ct);
+
+        await using TrafficCounterDbContext db = Db();
+        SystemEvent started = await db.SystemEvents.SingleAsync(Ct);
+        Assert.StartsWith("NC400: Started 1.0.0 on TESTPC, model yolo11s", started.Message);
+    }
+
+    [Fact]
     public async Task Minute_rows_advance_the_heartbeat()
     {
         SqlTrafficStore store = CreateStore();

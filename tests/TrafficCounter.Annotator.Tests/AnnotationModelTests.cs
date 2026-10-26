@@ -88,6 +88,46 @@ public sealed class AnnotationModelTests : IDisposable
     }
 
     [Fact]
+    public void A_video_only_opened_gets_no_annotation_file()
+    {
+        var model = new AnnotationModel(Video);
+
+        model.Save();
+
+        Assert.False(File.Exists(model.Path));
+    }
+
+    [Fact]
+    public void Next_steps_from_the_selected_entry_even_if_the_frame_lies_well_before_it()
+    {
+        var model = new AnnotationModel(Video);
+        model.Add(At(10));
+        model.Add(At(20));
+        model.Add(At(20.05, ImageMotion.RightToLeft));
+        model.SelectedIndex = 1;
+
+        // A gap in the recording: the frame shown for the entry at 20 s is at 19.5 s.
+        Assert.Equal(1, model.Neighbour(TimeSpan.FromSeconds(19.5), forward: true));
+        Assert.Equal(2, model.Neighbour(TimeSpan.FromSeconds(19.5), forward: true, fromSelected: true));
+        Assert.Equal(0, model.Neighbour(TimeSpan.FromSeconds(19.5), forward: false, fromSelected: true));
+    }
+
+    [Fact]
+    public void Next_with_skip_cars_finds_the_next_other_class()
+    {
+        var model = new AnnotationModel(Video);
+        model.Add(At(10));
+        model.Add(At(20));
+        model.Add(At(30, vehicleClass: VehicleClass.Van));
+        model.Add(At(40, vehicleClass: null));
+        model.SelectedIndex = 0;
+
+        Assert.Equal(2, model.Neighbour(TimeSpan.FromSeconds(10), forward: true, fromSelected: true, skipCars: true));
+        Assert.Equal(3, model.Neighbour(TimeSpan.FromSeconds(35), forward: true, skipCars: true));
+        Assert.Null(model.Neighbour(TimeSpan.FromSeconds(25), forward: false, skipCars: true));
+    }
+
+    [Fact]
     public void Counts_per_class_and_direction()
     {
         var model = new AnnotationModel(Video);

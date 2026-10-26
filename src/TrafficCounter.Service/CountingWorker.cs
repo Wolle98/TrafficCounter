@@ -104,7 +104,7 @@ internal sealed partial class CountingWorker(
             observable.CaptureObserver = frame => recorder.Offer(frame, (source as UsbFrameSource)?.ActualSettings);
         }
 
-        SampleCollector? samples = CreateSampleCollector(cameraId, periodId, writer);
+        SampleCollector? samples = CreateSampleCollector(cameraId, periodId, writer, SourceName() ?? source.Description);
         using IObjectDetector? personDetector = samples is null ? null : CreatePersonDetector(detector);
         if (samples is not null && personDetector is null && detector is not YoloOnnxDetector { DetectsPersons: true })
         {
@@ -134,9 +134,7 @@ internal sealed partial class CountingWorker(
         int processedInMinute = 0;
         int detectedInMinute = 0;
 
-        string cameraName = _options.Source.Name is { Length: > 0 } name ? name
-            : _options.Source.Type == SourceType.Usb && _options.Source.Usb.DeviceName is { Length: > 0 } device ? device
-            : source.Description;
+        string cameraName = SourceName() ?? source.Description;
         void Event(SystemEventKind kind, EventSeverity severity, string message) =>
             writer.Enqueue(new SystemEventRecord(cameraId, periodId, time.GetLocalNow(), kind, severity, $"{cameraName}: {message}"));
 
@@ -445,7 +443,13 @@ internal sealed partial class CountingWorker(
         return new QualitySample((float)overall.Brightness, (float)overall.Contrast, (float)overall.Sharpness, (float)line.Contrast, (float)line.Sharpness);
     }
 
-    private SampleCollector? CreateSampleCollector(int cameraId, int periodId, BufferedStoreWriter writer)
+    /// <summary>The configured camera name (or USB device), so events of two cameras counting one street can be told apart.</summary>
+    private string? SourceName() =>
+        _options.Source.Name is { Length: > 0 } name ? name
+        : _options.Source.Type == SourceType.Usb && _options.Source.Usb.DeviceName is { Length: > 0 } device ? device
+        : null;
+
+    private SampleCollector? CreateSampleCollector(int cameraId, int periodId, BufferedStoreWriter writer, string cameraName)
     {
         string defaultDirectory = PrivateLocations.PrivateRoot is { } root
             ? Path.Combine(root, "datasets", "inbox")
@@ -458,7 +462,7 @@ internal sealed partial class CountingWorker(
                 "SAMPLE COLLECTION active until {Until:yyyy-MM-dd HH:mm} (ADR-0026): anonymised images of selected vehicles go to {Directory}",
                 collector.Until, collector.Directory);
             writer.Enqueue(new SystemEventRecord(cameraId, periodId, time.GetLocalNow(), SystemEventKind.ConfigurationChanged, EventSeverity.Information,
-                $"Sample collection active until {collector.Until:yyyy-MM-dd HH:mm}."));
+                $"{cameraName}: Sample collection active until {collector.Until:yyyy-MM-dd HH:mm}."));
         }
 
         return collector;
@@ -546,7 +550,8 @@ internal sealed partial class CountingWorker(
                     Environment.MachineName,
                     NominalFps(),
                     Path.GetFileNameWithoutExtension(_options.Detector.ModelPath),
-                    ConfigurationSetup.ConfigHash(_options));
+                    ConfigurationSetup.ConfigHash(_options),
+                    SourceName());
                 (int periodId, int unclean) = await store.StartPeriodAsync(cameraId, start, stoppingToken);
 
                 _logger.LogInformation(

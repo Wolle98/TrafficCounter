@@ -117,14 +117,30 @@ internal sealed class AnnotationModel
             : bicycles.Where(i => _entries[i].Offset < from).OrderByDescending(i => _entries[i].Offset).Cast<int?>().FirstOrDefault();
     }
 
-    /// <summary>Index of the first entry after (or the last before) the position, ignoring entries within 0.1 s.</summary>
-    public int? Neighbour(TimeSpan current, bool forward)
+    /// <summary>
+    /// Index of the first entry after (or the last before) the position, ignoring entries within 0.1 s. With
+    /// <paramref name="fromSelected"/> it steps from the selected entry instead: after a jump the shown frame can lie
+    /// well before the entry (a gap in the recording), and searching from the frame found the same entry again.
+    /// <paramref name="skipCars"/> passes over car entries, to review the rarer classes.
+    /// </summary>
+    public int? Neighbour(TimeSpan current, bool forward, bool fromSelected = false, bool skipCars = false)
     {
-        TimeSpan margin = TimeSpan.FromSeconds(0.1);
-        IEnumerable<int> all = Enumerable.Range(0, _entries.Count);
-        return forward
-            ? all.Where(i => _entries[i].Offset > current + margin).OrderBy(i => _entries[i].Offset).Cast<int?>().FirstOrDefault()
-            : all.Where(i => _entries[i].Offset < current - margin).OrderByDescending(i => _entries[i].Offset).Cast<int?>().FirstOrDefault();
+        List<int> order = [.. Enumerable.Range(0, _entries.Count).OrderBy(i => _entries[i].Offset).ThenBy(i => i)];
+        IEnumerable<int> candidates;
+        if (fromSelected && Selected is not null)
+        {
+            int at = order.IndexOf(SelectedIndex);
+            candidates = forward ? order.Skip(at + 1) : order.Take(at).Reverse();
+        }
+        else
+        {
+            TimeSpan margin = TimeSpan.FromSeconds(0.1);
+            candidates = forward
+                ? order.Where(i => _entries[i].Offset > current + margin)
+                : order.Where(i => _entries[i].Offset < current - margin).Reverse();
+        }
+
+        return candidates.Where(i => !skipCars || _entries[i].Class != VehicleClass.Car).Cast<int?>().FirstOrDefault();
     }
 
     /// <summary>Counts per class (in enum order, unknown last) and direction, only classes that occur.</summary>
@@ -174,10 +190,16 @@ internal sealed class AnnotationModel
 
     /// <summary>
     /// Writes the annotations after every change. A file briefly locked by a virus scanner or sync tool must not end
-    /// the session: the entries stay in memory, a warning is shown and the next change writes them again.
+    /// the session: the entries stay in memory, a warning is shown and the next change writes them again. A video
+    /// that was only opened gets no file, so the file list does not mark it as annotated.
     /// </summary>
     public void Save()
     {
+        if (_entries.Count == 0 && !File.Exists(Path))
+        {
+            return;
+        }
+
         for (int attempt = 1; ; attempt++)
         {
             try

@@ -28,6 +28,7 @@
   <data name="−1 frame" xml:space="preserve"><value>−1 Bild</value></data>
   <data name="+1 frame" xml:space="preserve"><value>+1 Bild</value></data>
   <data name="Next ▶|" xml:space="preserve"><value>Nächste ▶|</value></data>
+  <data name="Shift: skip cars" xml:space="preserve"><value>Umschalt: Pkw überspringen</value></data>
   <data name="Annotate speed" xml:space="preserve"><value>Geschwindigkeit annotieren</value></data>
   <data name="km/h on the speedometer" xml:space="preserve"><value>km/h laut Tacho</value></data>
   <data name="Save" xml:space="preserve"><value>Speichern</value></data>
