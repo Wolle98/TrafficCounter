@@ -51,3 +51,4 @@ Format and process: [ADR-0001](0001-use-adrs.md) · Template: [0000-template.md]
 | [0045](0045-public-snapshots.md) | Public repository as checked snapshots of a private working repository | accepted | 0 |
 | [0046](0046-two-wheelers-and-split-tracks.md) | Two-wheelers are never trailers; one vehicle split into two tracks is counted once | accepted | 1 |
 | [0047](0047-trailer-class-tracked.md) | The own model's trailers are tracked and only counted with their towing vehicle | accepted | 3 |
+| [0048](0048-slow-e-scooters-on-the-sidewalk.md) | E-scooters at walking pace on the sidewalk are not counted | accepted | 3 |

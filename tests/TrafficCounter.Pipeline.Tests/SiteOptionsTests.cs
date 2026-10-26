@@ -49,19 +49,22 @@ public class SiteOptionsTests
     [InlineData(VehicleClass.Motorcycle, 5f, 0.40f, false)]  // on the road
     [InlineData(VehicleClass.Bicycle, 5f, 0.92f, false)]     // cyclists on the sidewalk count (ADR-0020)
     [InlineData(VehicleClass.Motorcycle, null, 0.92f, false)] // no speed: no decision
-    public void Slow_motorcycles_on_the_sidewalk_are_not_vehicles(VehicleClass vehicleClass, float? speed, float position, bool dropped)
+    [InlineData(VehicleClass.EScooter, 4.5f, 0.05f, true)]    // pedestrian on the far sidewalk taken for an e-scooter
+    [InlineData(VehicleClass.EScooter, 9f, 0.92f, false)]     // slow, but faster than walking
+    [InlineData(VehicleClass.EScooter, 4.5f, 0.40f, false)]   // on the road
+    public void Slow_motorcycles_and_e_scooters_on_the_sidewalk_are_not_vehicles(VehicleClass vehicleClass, float? speed, float position, bool dropped)
     {
         var site = new SiteOptions { FarKerb = 0.15f, NearKerb = 0.67f };
 
-        Assert.Equal(dropped, site.IsSidewalkPseudoMotorcycle(vehicleClass, speed, position));
+        Assert.Equal(dropped, site.IsSidewalkPseudoVehicle(vehicleClass, speed, position));
     }
 
     [Fact]
     public void The_sidewalk_rule_needs_the_kerbs_and_can_be_switched_off()
     {
-        Assert.False(new SiteOptions().IsSidewalkPseudoMotorcycle(VehicleClass.Motorcycle, 5, 0.92f));
+        Assert.False(new SiteOptions().IsSidewalkPseudoVehicle(VehicleClass.Motorcycle, 5, 0.92f));
         Assert.False(new SiteOptions { FarKerb = 0.15f, NearKerb = 0.67f, SidewalkMotorcycleMaxKmh = null }
-            .IsSidewalkPseudoMotorcycle(VehicleClass.Motorcycle, 5, 0.92f));
+            .IsSidewalkPseudoVehicle(VehicleClass.Motorcycle, 5, 0.92f));
     }
 
     [Fact]

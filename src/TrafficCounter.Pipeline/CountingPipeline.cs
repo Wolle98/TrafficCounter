@@ -124,7 +124,7 @@ public sealed class CountingPipeline(IObjectDetector detector, ITracker tracker,
 
     /// <summary>Passages that are vehicles: prams and the like on the sidewalk, taken for a motorcycle, are dropped.</summary>
     private IEnumerable<VehiclePassageEvent> Counted(IEnumerable<VehiclePassageEvent> passages) =>
-        passages.Where(p => !site.IsSidewalkPseudoMotorcycle(p.Class, p.SpeedKmh, p.LinePosition));
+        passages.Where(p => !site.IsSidewalkPseudoVehicle(p.Class, p.SpeedKmh, p.LinePosition));
 
     public void Dispose()
     {

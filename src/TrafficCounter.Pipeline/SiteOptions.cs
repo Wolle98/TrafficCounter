@@ -95,10 +95,24 @@ public sealed class SiteOptions
     /// </summary>
     public float? SidewalkMotorcycleMaxKmh { get; set; } = 10;
 
-    /// <summary>True if the passage is a pram or the like taken for a motorcycle (see <see cref="SidewalkMotorcycleMaxKmh"/>).</summary>
-    public bool IsSidewalkPseudoMotorcycle(VehicleClass vehicleClass, float? speedKmh, float linePosition) =>
-        vehicleClass == VehicleClass.Motorcycle
-        && SidewalkMotorcycleMaxKmh is float limit && speedKmh is float speed && speed < limit
+    /// <summary>
+    /// E-scooters slower than this on a sidewalk are not counted: pedestrians are now and then taken for an e-scooter,
+    /// at 4–5 km/h, while e-scooters ride at 14–21 km/h even on the sidewalk. A pushed e-scooter is not counted
+    /// either. Null: off (ADR-0048).
+    /// </summary>
+    public float? SidewalkEScooterMaxKmh { get; set; } = 8;
+
+    /// <summary>
+    /// True if the passage is a pram, a walker or a pedestrian taken for a motorcycle or an e-scooter (see
+    /// <see cref="SidewalkMotorcycleMaxKmh"/>, <see cref="SidewalkEScooterMaxKmh"/>).
+    /// </summary>
+    public bool IsSidewalkPseudoVehicle(VehicleClass vehicleClass, float? speedKmh, float linePosition) =>
+        (vehicleClass switch
+        {
+            VehicleClass.Motorcycle => SidewalkMotorcycleMaxKmh,
+            VehicleClass.EScooter => SidewalkEScooterMaxKmh,
+            _ => null,
+        }) is float limit && speedKmh is float speed && speed < limit
         && FarKerb is float far && NearKerb is float near
         && (linePosition < Math.Min(far, near) || linePosition > Math.Max(far, near));
 

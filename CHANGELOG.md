@@ -4,6 +4,12 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.10.10] – 2026-10-26
+
+### Fixed
+
+- Pedestrians on a sidewalk taken for an e-scooter are no longer counted: an e-scooter outside the kerbs slower than `Site:SidewalkEScooterMaxKmh` (8 km/h) is dropped, like a slow motorcycle there (ADR-0048).
+
 ## [0.10.9] – 2026-10-26
 
 ### Changed
