@@ -4,6 +4,12 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.10.13] – 2026-10-27
+
+### Changed
+
+- The night thresholds for new tracks now also apply at dusk (`Tracker:NightThresholdsAtDusk` on by default, ADR-0049). On six dusk videos 3 of 906 vehicles more were counted, none fewer.
+
 ## [0.10.12] – 2026-10-27
 
 ### Added

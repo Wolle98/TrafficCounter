@@ -21,8 +21,8 @@ public sealed record TrackerSettings
     /// <summary><see cref="NewTrackConfidence"/> at night (ADR-0028).</summary>
     public float NightNewTrackConfidence { get; init; } = 0.25f;
 
-    /// <summary>Uses the night thresholds also at dusk (civil twilight); off: dusk keeps the day values (ADR-0028).</summary>
-    public bool NightThresholdsAtDusk { get; init; }
+    /// <summary>Uses the night thresholds also at dusk (civil twilight); off: dusk keeps the day values (ADR-0049).</summary>
+    public bool NightThresholdsAtDusk { get; init; } = true;
 
     /// <summary>
     /// Optional lower <see cref="HighConfidence"/> for bicycles and motorcycles: the COCO model sees cyclists and

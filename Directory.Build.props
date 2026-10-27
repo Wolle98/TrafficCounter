@@ -28,7 +28,7 @@
     <Copyright>Copyright (C) 2026 Wolle98</Copyright>
     <!-- One version for all programs (ADR-0038): raise it with every deployment and note the changes in CHANGELOG.md.
          The build appends the commit ("+<hash>"), so logs and operating periods show the exact state. -->
-    <Version>0.10.12</Version>
+    <Version>0.10.13</Version>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/Wolle98/TrafficCounter</RepositoryUrl>
   </PropertyGroup>
