@@ -19,7 +19,7 @@
   <data name="Motorcycle" xml:space="preserve"><value>Motorcycle</value></data>
   <data name="Bicycle" xml:space="preserve"><value>Bicycle</value></data>
   <data name="E-scooter" xml:space="preserve"><value>E-scooter</value></data>
-  <data name="Agricultural" xml:space="preserve"><value>Agricultural</value></data>
+  <data name="Agricultural" xml:space="preserve"><value>Agricultural &amp; construction</value></data>
   <data name="Unknown" xml:space="preserve"><value>Unknown</value></data>
   <data name="unclassified" xml:space="preserve"><value>unclassified</value></data>
   <data name="Undo" xml:space="preserve"><value>Undo</value></data>

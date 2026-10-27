@@ -245,6 +245,20 @@ Hourly weather data of the nearest DWD station (precipitation, temperature, suns
 - **Synchronisation:** `sync` copies the weather hours between the databases.
 - **Analysis app:** shows precipitation below the traffic charts and compares traffic in rain and dry weather on the "Period" page.
 
+## Notes, public and school holidays ([ADR-0051](adr/0051-day-notes-and-holidays.md))
+
+Notes explain unusual traffic, e.g. a building site that narrows the road. Public and school holidays of the site's region come from OpenHolidays (open data, no API key); only the region code leaves the machine. It is in the private site configuration:
+
+```json
+"Holidays": { "Subdivision": "DE-BE" }
+```
+
+- **Running service:** imports last, this and next year once a day.
+- **Catching up:** `TrafficCounter.Sync holidays [--provider PostgreSql] [--subdivision DE-BE] [--from-year 2026] [--to-year 2027]`.
+- **Notes:** page "Notes" of the analysis app, or `TrafficCounter.Sync add-note --from 2026-10-27 --to 2026-10-31 --text "…"` (a day without a time is the whole day), `list-notes`, `delete-note --id <sync id>`.
+- **Synchronisation:** `sync` copies holidays and notes; a deleted note is passed on as deleted.
+- **Analysis app:** shows them on the overview and on the "Period" page (list and per day).
+
 ## Reference recordings during operation ([ADR-0032](adr/0032-recordings-by-the-service.md))
 
 The service can record reference videos itself without interrupting counting. To do so, enable it once in the private configuration (then restart the service):

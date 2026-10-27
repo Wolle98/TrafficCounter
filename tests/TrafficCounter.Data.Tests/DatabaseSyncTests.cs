@@ -281,4 +281,79 @@ public sealed class DatabaseSyncTests : IAsyncLifetime
             Assert.Equal(2, await db.VehiclePassages.CountAsync(Ct));
         }
     }
+    [Fact]
+    public async Task Notes_and_their_deletion_are_carried_over_and_the_newer_copy_wins()
+    {
+        Guid id;
+        await using (TrafficCounterDbContext a = Db(_a))
+        {
+            id = (await DayNotes.AddAsync(a, T0, T0.AddDays(2), "Building site opposite, one lane", Ct)).SyncId;
+        }
+
+        await using (TrafficCounterDbContext a = Db(_a))
+        await using (TrafficCounterDbContext b = Db(_b))
+        {
+            Assert.Equal(1, (await DatabaseSync.CopyAsync(a, b, Ct)).NotesChanged);
+        }
+
+        await using (TrafficCounterDbContext b = Db(_b))
+        {
+            Assert.True(await DayNotes.UpdateAsync(b, id, T0, T0.AddDays(3), "Building site opposite, until Friday", Ct));
+        }
+
+        await using (TrafficCounterDbContext a = Db(_a))
+        {
+            Assert.True(await DayNotes.DeleteAsync(a, id, Ct));
+        }
+
+        // A deleted it after B changed it: the deletion is newer and wins on both sides.
+        await using (TrafficCounterDbContext a = Db(_a))
+        await using (TrafficCounterDbContext b = Db(_b))
+        {
+            Assert.Equal(0, (await DatabaseSync.CopyAsync(b, a, Ct)).NotesChanged);
+            Assert.Equal(1, (await DatabaseSync.CopyAsync(a, b, Ct)).NotesChanged);
+            Assert.Empty(await DayNotes.ListAsync(b, T0.AddDays(-1), T0.AddDays(5), Ct));
+            Assert.Equal(1, await b.DayNotes.CountAsync(Ct));
+        }
+    }
+
+    [Fact]
+    public async Task Holidays_are_stored_updated_removed_and_carried_over()
+    {
+        DateOnly from = new(2026, 1, 1), to = new(2026, 12, 31);
+        CalendarEntry Entry(Guid id, int month, int day, string name) => new()
+        {
+            ExternalId = id, Kind = CalendarEntryKind.SchoolHoliday, StartDate = new DateOnly(2026, month, day),
+            EndDate = new DateOnly(2026, month, day + 5), Name = name, EnglishName = "Holidays", Subdivision = "DE-XX", ImportedAt = T0,
+        };
+        Guid autumn = Guid.NewGuid(), wrong = Guid.NewGuid();
+        await using (TrafficCounterDbContext a = Db(_a))
+        {
+            Assert.Equal(2, await HolidayImport.StoreAsync(a, "DE-XX", from, to, [Entry(autumn, 10, 17, "Herbstferien"), Entry(wrong, 11, 2, "Falsch")], Ct));
+        }
+
+        await using (TrafficCounterDbContext a = Db(_a))
+        {
+            // A later import renames one entry and no longer lists the other.
+            Assert.Equal(2, await HolidayImport.StoreAsync(a, "DE-XX", from, to, [Entry(autumn, 10, 17, "Herbstferien 2026")], Ct));
+            Assert.Equal(0, await HolidayImport.StoreAsync(a, "DE-XX", from, to, [Entry(autumn, 10, 17, "Herbstferien 2026")], Ct));
+        }
+
+        await using (TrafficCounterDbContext a = Db(_a))
+        await using (TrafficCounterDbContext b = Db(_b))
+        {
+            Assert.Equal(1, (await DatabaseSync.CopyAsync(a, b, Ct)).CalendarEntriesChanged);
+            CalendarEntry copy = await b.CalendarEntries.SingleAsync(Ct);
+            Assert.Equal("Herbstferien 2026", copy.Name);
+            Assert.Equal(new DateOnly(2026, 10, 22), copy.EndDate);
+        }
+    }
+
+    [Fact]
+    public async Task A_note_needs_a_text_and_an_end_after_the_start()
+    {
+        await using TrafficCounterDbContext a = Db(_a);
+        await Assert.ThrowsAsync<ArgumentException>(() => DayNotes.AddAsync(a, T0, T0.AddHours(1), "  ", Ct));
+        await Assert.ThrowsAsync<ArgumentException>(() => DayNotes.AddAsync(a, T0, T0, "Building site", Ct));
+    }
 }

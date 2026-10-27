@@ -14,11 +14,14 @@ public sealed record SyncResult(
     int MinutesAdded,
     int EventsAdded,
     int DriftMeasurementsAdded,
-    int WeatherHoursChanged = 0)
+    int WeatherHoursChanged = 0,
+    int CalendarEntriesChanged = 0,
+    int NotesChanged = 0)
 {
     public override string ToString() =>
         $"cameras +{CamerasAdded}, periods +{PeriodsAdded} / updated {PeriodsUpdated}, passages +{PassagesAdded}, "
-        + $"minutes +{MinutesAdded}, events +{EventsAdded}, drift +{DriftMeasurementsAdded}, weather {WeatherHoursChanged}";
+        + $"minutes +{MinutesAdded}, events +{EventsAdded}, drift +{DriftMeasurementsAdded}, weather {WeatherHoursChanged}, "
+        + $"holidays {CalendarEntriesChanged}, notes {NotesChanged}";
 }
 
 /// <summary>
@@ -140,7 +143,55 @@ public static class DatabaseSync
             target.ChangeTracker.Clear();
         }
 
-        return new SyncResult(camerasAdded, periodsAdded, periodsUpdated, passages, minutes, events, drift, weather);
+        // 5. Holidays and notes (ADR-0051), not when copying a time range. Holidays by their OpenHolidays id, notes by
+        // SyncId; the newer copy wins, so a note deleted on one side is marked deleted on the other as well.
+        int calendar = 0;
+        int notes = 0;
+        if (range is null)
+        {
+            Dictionary<Guid, CalendarEntry> targetEntries = await target.CalendarEntries.ToDictionaryAsync(c => c.ExternalId, cancellationToken);
+            foreach (CalendarEntry entry in await source.CalendarEntries.AsNoTracking().ToListAsync(cancellationToken))
+            {
+                if (!targetEntries.TryGetValue(entry.ExternalId, out CalendarEntry? copy))
+                {
+                    copy = Clone(entry);
+                    copy.Id = 0;
+                    target.CalendarEntries.Add(copy);
+                    calendar++;
+                }
+                else if (entry.ImportedAt > copy.ImportedAt)
+                {
+                    long id = copy.Id;
+                    CopyValues(entry, copy);
+                    copy.Id = id;
+                    calendar++;
+                }
+            }
+
+            Dictionary<Guid, DayNote> targetNotes = await target.DayNotes.ToDictionaryAsync(n => n.SyncId, cancellationToken);
+            foreach (DayNote note in await source.DayNotes.AsNoTracking().ToListAsync(cancellationToken))
+            {
+                if (!targetNotes.TryGetValue(note.SyncId, out DayNote? copy))
+                {
+                    copy = Clone(note);
+                    copy.Id = 0;
+                    target.DayNotes.Add(copy);
+                    notes++;
+                }
+                else if (note.UpdatedAt > copy.UpdatedAt)
+                {
+                    long id = copy.Id;
+                    CopyValues(note, copy);
+                    copy.Id = id;
+                    notes++;
+                }
+            }
+
+            await target.SaveChangesAsync(cancellationToken);
+            target.ChangeTracker.Clear();
+        }
+
+        return new SyncResult(camerasAdded, periodsAdded, periodsUpdated, passages, minutes, events, drift, weather, calendar, notes);
     }
 
     /// <summary>Stable id of a hand-counted recording, so re-imports on either side refer to the same period.</summary>

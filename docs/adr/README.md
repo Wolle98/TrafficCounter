@@ -53,3 +53,5 @@ Format and process: [ADR-0001](0001-use-adrs.md) · Template: [0000-template.md]
 | [0047](0047-trailer-class-tracked.md) | The own model's trailers are tracked and only counted with their towing vehicle | accepted | 3 |
 | [0048](0048-slow-e-scooters-on-the-sidewalk.md) | E-scooters at walking pace on the sidewalk are not counted | accepted | 3 |
 | [0049](0049-night-thresholds-at-dusk.md) | The night thresholds also apply at dusk | accepted | 1 |
+| [0050](0050-slow-e-scooters-everywhere.md) | E-scooters at walking pace are not counted on the road either | accepted | 3 |
+| [0051](0051-day-notes-and-holidays.md) | Notes on days and imported holidays explain unusual traffic | accepted | 4 |

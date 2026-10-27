@@ -1,0 +1,171 @@
+@page "/notes"
+@inject TrafficQueries Queries
+
+<PageTitle>@L["App.PageTitle", L["Nav.Notes"]]</PageTitle>
+
+<h1>@L["Nav.Notes"]</h1>
+<p class="hint">@L["Notes.Intro"]</p>
+
+<h2>@(_editing is null ? L["Notes.New"] : L["Notes.Edit"])</h2>
+<div class="notes-form filters">
+    <label for="note-from">@L["Range.From"]</label>
+    <span><input id="note-from" type="date" @bind="_fromDay" /> <input type="time" @bind="_fromTime" /></span>
+    <label for="note-to">@L["Range.To"]</label>
+    <span><input id="note-to" type="date" @bind="_toDay" /> <input type="time" @bind="_toTime" /></span>
+    <label for="note-text">@L["Notes.Text"]</label>
+    <textarea id="note-text" maxlength="1000" @bind="_text"></textarea>
+    <span class="actions">
+        <button type="button" @onclick="SaveAsync">@L["Notes.Save"]</button>
+        @if (_editing is not null)
+        {
+            <button type="button" class="secondary" @onclick="Reset">@L["Notes.Cancel"]</button>
+        }
+    </span>
+</div>
+<p class="hint">@L["Notes.TimeHint"]</p>
+
+@if (_error is not null)
+{
+    <p class="error">@_error</p>
+}
+
+<h2>@L["Notes.List"]</h2>
+@if (_notes.Count == 0)
+{
+    <p class="hint">@L["Notes.None"]</p>
+}
+else
+{
+    <table class="data">
+        <thead><tr><th>@L["Notes.Span"]</th><th>@L["Notes.Text"]</th><th></th></tr></thead>
+        <tbody>
+            @foreach (DayMarker note in _notes)
+            {
+                <tr>
+                    <td>@Span(note)</td>
+                    <td>@note.Text</td>
+                    <td class="filters">
+                        <button type="button" class="secondary" @onclick="() => Edit(note)">@L["Notes.EditButton"]</button>
+                        <button type="button" class="secondary" @onclick="() => DeleteAsync(note)">@L["Notes.Delete"]</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h2>@L["Notes.Holidays", DateTime.Today.Year]</h2>
+@if (_holidays.Count == 0)
+{
+    <p class="hint">@L["Notes.NoHolidays"]</p>
+}
+else
+{
+    <DayMarkerList Markers="@_holidays" ShowDates="true" />
+}
+
+@code {
+    private List<DayMarker> _notes = [];
+    private List<DayMarker> _holidays = [];
+    private DayMarker? _editing;
+    private DateTime _fromDay = DateTime.Today;
+    private DateTime? _fromTime;
+    private DateTime _toDay = DateTime.Today;
+    private DateTime? _toTime;
+    private string _text = "";
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            DateTime today = DateTime.Today;
+            List<DayMarker> markers = await Queries.DayMarkersAsync(new DateTime(today.Year - 1, 1, 1), new DateTime(today.Year + 2, 1, 1));
+            _notes = [.. markers.Where(m => m.Kind == DayMarkerKind.Note).OrderByDescending(m => m.Start)];
+            _holidays = [.. markers.Where(m => m.Kind != DayMarkerKind.Note && m.Touches(new DateTime(today.Year, 1, 1), new DateTime(today.Year + 1, 1, 1)))];
+        }
+        catch (Exception ex)
+        {
+            _error = L["Common.DatabaseUnreachable", ex.Message];
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        // Without a time a note covers whole days: from the start of the first day to the end of the last one.
+        DateTime start = _fromDay.Date + (_fromTime?.TimeOfDay ?? TimeSpan.Zero);
+        DateTime end = _toTime is DateTime toTime ? _toDay.Date + toTime.TimeOfDay : _toDay.Date.AddDays(1);
+        if (string.IsNullOrWhiteSpace(_text))
+        {
+            _error = L["Notes.TextMissing"];
+            return;
+        }
+
+        if (end <= start)
+        {
+            _error = L["Period.EndBeforeStart"];
+            return;
+        }
+
+        try
+        {
+            if (_editing?.NoteId is Guid id)
+            {
+                await Queries.UpdateNoteAsync(id, start, end, _text);
+            }
+            else
+            {
+                await Queries.AddNoteAsync(start, end, _text);
+            }
+
+            Reset();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = L["Common.DatabaseUnreachable", ex.Message];
+        }
+    }
+
+    private void Edit(DayMarker note)
+    {
+        _editing = note;
+        _fromDay = note.Start.Date;
+        _fromTime = note.WholeDays ? null : note.Start;
+        _toDay = note.WholeDays ? note.End.AddDays(-1).Date : note.End.Date;
+        _toTime = note.WholeDays ? null : note.End;
+        _text = note.Text;
+        _error = null;
+    }
+
+    private void Reset()
+    {
+        _editing = null;
+        _fromDay = _toDay = DateTime.Today;
+        _fromTime = _toTime = null;
+        _text = "";
+        _error = null;
+    }
+
+    private async Task DeleteAsync(DayMarker note)
+    {
+        if (note.NoteId is Guid id)
+        {
+            await Queries.DeleteNoteAsync(id);
+            if (_editing == note)
+            {
+                Reset();
+            }
+
+            await LoadAsync();
+        }
+    }
+
+    private string Span(DayMarker note) => note.WholeDays
+        ? note.End.AddDays(-1) == note.Start
+            ? L.Date(note.Start, "Format.DayRow")
+            : $"{L.Date(note.Start, "Format.DayRow")} – {L.Date(note.End.AddDays(-1), "Format.DayRow")}"
+        : $"{L.Date(note.Start, "Format.DateTimeShort")} – {L.Date(note.End, "Format.DateTimeShort")}";
+}

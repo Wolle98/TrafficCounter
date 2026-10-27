@@ -4,6 +4,24 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.11.0] – 2026-10-27
+
+### Added
+
+- Notes on days or time spans (e.g. a building site that narrows the road) and public and school holidays of the site's region, shown on the overview and the "Period" page of the analysis app (ADR-0051). Notes are added, changed and deleted on the new page "Notes" or with `TrafficCounter.Sync add-note`, `list-notes` and `delete-note`; the service imports the holidays daily from OpenHolidays when `TrafficCounter:Holidays:Subdivision` is set, `TrafficCounter.Sync holidays` on demand. The sync copies both (migration `AddHolidaysAndNotes`).
+
+## [0.10.15] – 2026-10-27
+
+### Changed
+
+- The class "Agricultural" is now named "Agricultural & construction" ("Landwirtschaft & Baufahrzeuge") in the analysis app, the annotator and the `VehicleClass` table (migration `RenameAgriculturalClass`); construction vehicles were already counted in it.
+
+## [0.10.14] – 2026-10-27
+
+### Changed
+
+- E-scooters slower than 8 km/h are no longer counted on the road either, not only on the sidewalk: a pedestrian crossing the road at the counting line was taken for one. The setting `Site:SidewalkEScooterMaxKmh` is now `Site:SlowEScooterMaxKmh` and no longer needs the kerbs (ADR-0050).
+
 ## [0.10.13] – 2026-10-27
 
 ### Changed

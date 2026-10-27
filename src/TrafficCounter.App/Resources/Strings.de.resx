@@ -143,7 +143,7 @@
     <value>Bus</value>
   </data>
   <data name="Class.Agricultural" xml:space="preserve">
-    <value>Landwirtschaft</value>
+    <value>Landwirtschaft &amp; Baufahrzeuge</value>
   </data>
   <data name="Class.Motorcycle" xml:space="preserve">
     <value>Motorrad</value>
@@ -540,5 +540,68 @@
   </data>
   <data name="Table.Total" xml:space="preserve">
     <value>Summe</value>
+  </data>
+  <data name="Nav.Notes" xml:space="preserve">
+    <value>Vermerke</value>
+  </data>
+  <data name="Notes.Intro" xml:space="preserve">
+    <value>Vermerke zu Tagen oder Stunden erklären ungewöhnlichen Verkehr, z. B. eine Baustelle, die die Straße verengt. Feiertage und Schulferien der Region kommen automatisch dazu.</value>
+  </data>
+  <data name="Notes.New" xml:space="preserve">
+    <value>Neuer Vermerk</value>
+  </data>
+  <data name="Notes.Edit" xml:space="preserve">
+    <value>Vermerk ändern</value>
+  </data>
+  <data name="Notes.Text" xml:space="preserve">
+    <value>Text</value>
+  </data>
+  <data name="Notes.Save" xml:space="preserve">
+    <value>Speichern</value>
+  </data>
+  <data name="Notes.Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="Notes.TimeHint" xml:space="preserve">
+    <value>Ohne Uhrzeiten gilt der Vermerk für die ganzen Tage vom ersten bis zum letzten Tag.</value>
+  </data>
+  <data name="Notes.List" xml:space="preserve">
+    <value>Vermerke</value>
+  </data>
+  <data name="Notes.None" xml:space="preserve">
+    <value>Noch keine Vermerke.</value>
+  </data>
+  <data name="Notes.Span" xml:space="preserve">
+    <value>Zeit</value>
+  </data>
+  <data name="Notes.EditButton" xml:space="preserve">
+    <value>Ändern</value>
+  </data>
+  <data name="Notes.Delete" xml:space="preserve">
+    <value>Löschen</value>
+  </data>
+  <data name="Notes.Holidays" xml:space="preserve">
+    <value>Ferien und Feiertage {0}</value>
+  </data>
+  <data name="Notes.NoHolidays" xml:space="preserve">
+    <value>Keine Ferien und Feiertage importiert (TrafficCounter:Holidays:Subdivision nicht gesetzt).</value>
+  </data>
+  <data name="Notes.TextMissing" xml:space="preserve">
+    <value>Bitte einen Text eingeben.</value>
+  </data>
+  <data name="Marker.Note" xml:space="preserve">
+    <value>Vermerk</value>
+  </data>
+  <data name="Marker.PublicHoliday" xml:space="preserve">
+    <value>Feiertag</value>
+  </data>
+  <data name="Marker.SchoolHoliday" xml:space="preserve">
+    <value>Schulferien</value>
+  </data>
+  <data name="Marker.Times" xml:space="preserve">
+    <value>{0}–{1}</value>
+  </data>
+  <data name="Table.Markers" xml:space="preserve">
+    <value>Hinweise</value>
   </data>
 </root>

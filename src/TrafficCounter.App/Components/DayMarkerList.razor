@@ -1,0 +1,43 @@
+@* Notes and holidays (ADR-0051) as small labels: holidays explain unusual traffic, notes e.g. a building site. With
+   ShowDates each label names its span, for lists over a longer period. *@
+@using System.Globalization
+
+@if (Markers.Count > 0)
+{
+    <ul class="markers">
+        @foreach (DayMarker marker in Markers)
+        {
+            <li class="marker @marker.Kind.ToString().ToLowerInvariant()" title="@L[$"Marker.{marker.Kind}"]">
+                <span class="kind">@L[$"Marker.{marker.Kind}"]</span>
+                @if (ShowDates)
+                {
+                    <span class="span">@Span(marker)</span>
+                }
+                else if (!marker.WholeDays)
+                {
+                    <span class="span">@L["Marker.Times", marker.Start.ToString("t", CultureInfo.CurrentCulture), marker.End.ToString("t", CultureInfo.CurrentCulture)]</span>
+                }
+                @marker.Text
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<DayMarker> Markers { get; set; } = [];
+
+    [Parameter] public bool ShowDates { get; set; }
+
+    private string Span(DayMarker marker)
+    {
+        if (marker.WholeDays)
+        {
+            DateTime last = marker.End.AddDays(-1);
+            return last == marker.Start
+                ? L.Date(marker.Start, "Format.DayRow")
+                : $"{L.Date(marker.Start, "Format.DayRow")} – {L.Date(last, "Format.DayRow")}";
+        }
+
+        return $"{L.Date(marker.Start, "Format.DateTimeShort")} – {L.Date(marker.End, "Format.DateTimeShort")}";
+    }
+}

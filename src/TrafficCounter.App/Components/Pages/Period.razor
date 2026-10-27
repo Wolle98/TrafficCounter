@@ -47,6 +47,8 @@
 }
 else if (_buckets.Count > 0)
 {
+    <DayMarkerList Markers="@_markers" ShowDates="true" />
+
     <div class="tiles">
         <div class="tile"><div class="value">@_filtered.Count.ToString("N0", Culture)</div><div class="label">@L["Period.Counted"]</div></div>
         <div class="tile"><div class="value">@Coverage.ToString("P2", Culture)</div><div class="label">@L["Common.TimeMeasured"]</div></div>
@@ -94,7 +96,7 @@ else if (_buckets.Count > 0)
     }
 
     <table class="data">
-        <thead><tr><th>@(_size >= TimeSpan.FromDays(1) ? L["Table.Day"] : L["Table.Hour"])</th><th class="num">@L["Table.Vehicles"]</th><th class="num">@L["Table.Measured"]</th><th class="num">@L["Table.PerHour"]</th></tr></thead>
+        <thead><tr><th>@(_size >= TimeSpan.FromDays(1) ? L["Table.Day"] : L["Table.Hour"])</th><th class="num">@L["Table.Vehicles"]</th><th class="num">@L["Table.Measured"]</th><th class="num">@L["Table.PerHour"]</th><th>@L["Table.Markers"]</th></tr></thead>
         <tbody>
             @foreach (Bucket bucket in _buckets.Where(b => b.Minutes > 0))
             {
@@ -110,6 +112,7 @@ else if (_buckets.Count > 0)
                     {
                         <td class="num">@(bucket.RatePerHour?.ToString("0", Culture) ?? "–")</td>
                     }
+                    <td class="markers-cell">@MarkersOf(bucket)</td>
                 </tr>
             }
         </tbody>
@@ -136,6 +139,7 @@ else if (_buckets.Count > 0)
     private List<PassageRow> _filtered = [];
     private List<Bucket> _buckets = [];
     private List<WeatherRow> _weather = [];
+    private List<DayMarker> _markers = [];
     private HashSet<DateTime> _covered = [];
     private TimeSpan _size = TimeSpan.FromDays(1);
     private string? _error;
@@ -176,6 +180,10 @@ else if (_buckets.Count > 0)
         List<PassageRow> inHours = [.. _filtered.Where(p => hours.Contains(TrafficStatistics.Truncate(p.At, TimeSpan.FromHours(1))))];
         return (minutes / 60, inHours.Count * 60 / minutes, inHours.Count(p => p.Class == VehicleClass.Bicycle) * 60 / minutes);
     }
+
+    /// <summary>Names of the holidays and notes touching the bucket, for the table.</summary>
+    private string MarkersOf(Bucket bucket) =>
+        string.Join(" · ", _markers.Where(m => m.Touches(bucket.Start, bucket.Start + _size)).Select(m => m.Text));
 
     private IReadOnlyList<double> CoverageList => [.. _buckets.Select(b => b.Minutes == 0 ? 1 : b.Coverage)];
 
@@ -236,6 +244,7 @@ else if (_buckets.Count > 0)
             _size = Size;
             _covered = covered;
             _weather = await Queries.WeatherAsync(from, to);
+            _markers = await Queries.DayMarkersAsync(from, to);
             _buckets = TrafficStatistics.Buckets(_filtered, covered, from, to, _size, DateTime.Now);
             _error = null;
         }

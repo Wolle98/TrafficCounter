@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using TrafficCounter.Core;
 using TrafficCounter.Core.Operations;
@@ -17,6 +18,23 @@ public sealed record EventRow(DateTime At, SystemEventKind Kind, EventSeverity S
 /// <summary>Weather of one hour (ADR-0023), local time of the hour's start.</summary>
 public readonly record struct WeatherRow(DateTime Hour, float? PrecipitationMm, float? TemperatureC, float? SunshineMinutes, string? Condition);
 
+/// <summary>What a <see cref="DayMarker"/> is: a hand-written note or an imported holiday (ADR-0051).</summary>
+public enum DayMarkerKind
+{
+    Note,
+    PublicHoliday,
+    SchoolHoliday,
+}
+
+/// <summary>A note or holiday over a span of local time; <paramref name="End"/> is exclusive.</summary>
+public sealed record DayMarker(DateTime Start, DateTime End, DayMarkerKind Kind, string Text, Guid? NoteId = null)
+{
+    public bool Touches(DateTime from, DateTime to) => Start < to && End > from;
+
+    /// <summary>Whole days only: starts and ends at midnight.</summary>
+    public bool WholeDays => Start.TimeOfDay == TimeSpan.Zero && End.TimeOfDay == TimeSpan.Zero;
+}
+
 public sealed record PeriodRow(DateTime Started, DateTime? Ended, DateTime LastHeartbeat, string Machine, string? Model, string AppVersion);
 
 /// <summary>The camera to analyse: the one that counted last (ADR-0024 data model).</summary>
@@ -27,7 +45,7 @@ public sealed record CameraInfo(int Id, string Name, string DirectionA, string D
 }
 
 /// <summary>
-/// Read-only queries of the analysis app (stage 4, ADR-0014). Only rows counted by the service are used; hand
+/// Queries of the analysis app (stage 4, ADR-0014); apart from notes on days (ADR-0051) they only read. Only rows counted by the service are used; hand
 /// counts of reference videos (ADR-0027) stay out, they would count the same hours twice. Times are converted to
 /// local time here, whatever the database stores (SQL Server local time, PostgreSQL UTC).
 /// </summary>
@@ -133,6 +151,56 @@ public sealed class TrafficQueries(IDbContextFactory<TrafficCounterDbContext> fa
             // Database without the weather table yet (migration AddWeatherHour not applied): no weather.
             return [];
         }
+    }
+
+    /// <summary>Notes and holidays that touch [<paramref name="from"/>, <paramref name="to"/>), holidays first.</summary>
+    public async Task<List<DayMarker>> DayMarkersAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default)
+    {
+        (DateTimeOffset start, DateTimeOffset end) = Range(from, to);
+        await using TrafficCounterDbContext db = await factory.CreateDbContextAsync(cancellationToken);
+        try
+        {
+            DateOnly firstDay = DateOnly.FromDateTime(from);
+            DateOnly lastDay = DateOnly.FromDateTime(to.AddTicks(-1));
+            bool english = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "en";
+            List<DayMarker> markers = [.. (await db.CalendarEntries.AsNoTracking()
+                .Where(c => c.StartDate <= lastDay && c.EndDate >= firstDay)
+                .ToListAsync(cancellationToken))
+                .DistinctBy(c => (c.Kind, c.StartDate, c.EndDate, c.Name))
+                .OrderBy(c => c.StartDate)
+                .Select(c => new DayMarker(
+                    c.StartDate.ToDateTime(TimeOnly.MinValue), c.EndDate.AddDays(1).ToDateTime(TimeOnly.MinValue),
+                    c.Kind == CalendarEntryKind.PublicHoliday ? DayMarkerKind.PublicHoliday : DayMarkerKind.SchoolHoliday,
+                    english ? c.EnglishName ?? c.Name : c.Name))];
+            markers.AddRange((await DayNotes.ListAsync(db, start, end, cancellationToken))
+                .Select(n => new DayMarker(n.Start.ToLocalTime().DateTime, n.End.ToLocalTime().DateTime, DayMarkerKind.Note, n.Text, n.SyncId)));
+            return markers;
+        }
+        catch (DbException)
+        {
+            // Database without the tables yet (migration AddHolidaysAndNotes not applied): nothing to show.
+            return [];
+        }
+    }
+
+    public async Task AddNoteAsync(DateTime start, DateTime end, string text, CancellationToken cancellationToken = default)
+    {
+        (DateTimeOffset from, DateTimeOffset to) = Range(start, end);
+        await using TrafficCounterDbContext db = await factory.CreateDbContextAsync(cancellationToken);
+        await DayNotes.AddAsync(db, from, to, text, cancellationToken);
+    }
+
+    public async Task<bool> UpdateNoteAsync(Guid id, DateTime start, DateTime end, string text, CancellationToken cancellationToken = default)
+    {
+        (DateTimeOffset from, DateTimeOffset to) = Range(start, end);
+        await using TrafficCounterDbContext db = await factory.CreateDbContextAsync(cancellationToken);
+        return await DayNotes.UpdateAsync(db, id, from, to, text, cancellationToken);
+    }
+
+    public async Task<bool> DeleteNoteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await using TrafficCounterDbContext db = await factory.CreateDbContextAsync(cancellationToken);
+        return await DayNotes.DeleteAsync(db, id, cancellationToken);
     }
 
     private static (DateTimeOffset Start, DateTimeOffset End) Range(DateTime from, DateTime to) =>

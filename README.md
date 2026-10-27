@@ -34,8 +34,9 @@ Built with C# / .NET 10, OpenCvSharp, ONNX Runtime (YOLO11; DirectML, OpenVINO, 
 - **Operations log:** operating periods, one statistics row per minute and events. Gaps and degraded image quality are recorded instead of silently lowering the counts.
 - **Training samples:** an optional, time-limited collection mode stores anonymised images of vehicles the current model recognises uncertainly, rarely or late, as material for an own model ([ADR-0026](docs/adr/0026-targeted-collection-of-training-samples.md)).
 - **Weather:** hourly data of the nearest DWD station via Bright Sky ([ADR-0023](docs/adr/0023-weather-and-image-quality.md)). Only the station id leaves the machine.
+- **Notes and holidays:** notes on days (e.g. a building site) and public and school holidays of the region from OpenHolidays explain unusual traffic ([ADR-0051](docs/adr/0051-day-notes-and-holidays.md)).
 - **Analysis app** in the browser ([ADR-0014](docs/adr/0014-gui-technology.md), Blazor Server):
-  - pages: today/yesterday overview, periods with quick selection, both directions side by side, weekly heatmap, speed distribution, operations;
+  - pages: today/yesterday overview, periods with quick selection, both directions side by side, weekly heatmap, speed distribution, operations, notes;
   - exports: CSV, Excel, printable view;
   - English and German, further languages by adding one resource file ([ADR-0037](docs/adr/0037-multilingual-analysis-app.md)).
 - **Accuracy:** with the COCO model about 94 % on 653 hand-counted vehicles in reference videos (day, backlight, dusk, night), with no wrong directions; the misses were mostly e-scooters and cyclists. On four later hand-counted hours with 385 vehicles, the own model counted 373 of them, the COCO model 316. Strong afternoon backlight costs more.

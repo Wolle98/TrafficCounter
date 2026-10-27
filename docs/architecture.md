@@ -15,12 +15,14 @@ flowchart LR
     SRC -.-> REC[ScheduledRecorder<br/>reference recordings on a schedule]
     CNT -.-> SMP[SampleCollector<br/>anonymised training samples]
     WX[Bright Sky / DWD] --> WW[WeatherWorker<br/>hourly] --> DB
+    OH[OpenHolidays] --> HW[HolidayWorker<br/>daily] --> DB
     DB --> GUI[TrafficCounter.App<br/>Blazor Server]
 ```
 
 The pipeline runs in a `BackgroundService`. Next to it, the service runs:
 
 - the weather import (`WeatherWorker`, [ADR-0023](adr/0023-weather-and-image-quality.md));
+- the import of public and school holidays (`HolidayWorker`, [ADR-0051](adr/0051-day-notes-and-holidays.md));
 - on request, reference recordings on a schedule (`ScheduledRecorder`, [ADR-0032](adr/0032-recordings-by-the-service.md)). They get a copy of the camera frames; counting never waits for them;
 - on request, the collection of anonymised training samples (`SampleCollector`, [ADR-0026](adr/0026-targeted-collection-of-training-samples.md)), limited in time and per day.
 
@@ -138,14 +140,14 @@ TrafficCounter/
 │  ├─ TrafficCounter.Tracking/        ByteTrack, Kalman filter, track stitching
 │  ├─ TrafficCounter.Counting/        counting line, direction, class voting, trailers, speed
 │  ├─ TrafficCounter.Pipeline/        processing per frame (detection → tracking → counting), site geometry, preview
-│  ├─ TrafficCounter.Data/            EF Core (SQL Server and PostgreSQL), migrations, synchronisation, weather import
+│  ├─ TrafficCounter.Data/            EF Core (SQL Server and PostgreSQL), migrations, synchronisation, weather and holiday import
 │  ├─ TrafficCounter.Evaluation/      ground truth format, comparison count ↔ ground truth, speed test drives
 │  ├─ TrafficCounter.Service/         worker service (console + Windows service), scheduled recordings, sample collection
 │  ├─ TrafficCounter.CameraProbe/     tool: check camera capabilities, live view, record and compress reference videos
 │  ├─ TrafficCounter.Annotator/       tool: count reference videos by key press (ground truth), mark speed test drives
 │  ├─ TrafficCounter.Calibrator/      tool: set band, counting line, kerbs, static zones, ignore zones (later homography)
 │  ├─ TrafficCounter.Regression/      tool: evaluate reference videos against ground truth, live comparison, speed calibration and test drives
-│  ├─ TrafficCounter.Sync/            tool: set up PostgreSQL, synchronise databases, load weather, rescale speeds
+│  ├─ TrafficCounter.Sync/            tool: set up PostgreSQL, synchronise databases, load weather and holidays, notes, rescale speeds
 │  ├─ TrafficCounter.DemoData/        tool: fill a demo database with synthetic traffic
 │  └─ TrafficCounter.App/             analysis app (stage 4, Blazor Server): overview, period, weekly and daily pattern, speed, operations
 ├─ tests/
@@ -243,6 +245,6 @@ erDiagram
     }
 ```
 
-The diagram shows the core tables. In addition there are `DriftMeasurement` (camera position, [ADR-0019](adr/0019-camera-position-monitoring.md)) and `WeatherHour` (hourly weather, [ADR-0023](adr/0023-weather-and-image-quality.md)); passages also carry lighting, trailer count, source and track details, and all synchronised rows carry `SyncId`/`UpdatedAt` ([ADR-0030](adr/0030-postgresql-and-synchronisation.md)).
+The diagram shows the core tables. In addition there are `DriftMeasurement` (camera position, [ADR-0019](adr/0019-camera-position-monitoring.md)), `WeatherHour` (hourly weather, [ADR-0023](adr/0023-weather-and-image-quality.md)), `CalendarEntry` (holidays) and `DayNote` (notes, [ADR-0051](adr/0051-day-notes-and-holidays.md)); passages also carry lighting, trailer count, source and track details, and all synchronised rows carry `SyncId`/`UpdatedAt` ([ADR-0030](adr/0030-postgresql-and-synchronisation.md)).
 
 `OperatingPeriod`, `MinuteStatistic` and `SystemEvent` answer for every minute whether the system was off, ran but could not evaluate anything, or ran and there really was no traffic ([ADR-0024](adr/0024-operations-log-and-logging.md)). Without this information the statistics in stage 4 are not reliable.

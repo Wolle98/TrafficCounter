@@ -155,3 +155,16 @@ button.quick { font: inherit; font-size: .85rem; padding: .2rem .55rem; border: 
          background: var(--card); color: var(--fg); cursor: pointer; }
 button.quick.active, button.quick:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 .filters button.quick:not(.active):not(:hover) { background: var(--card); color: var(--fg); }
+
+/* Notes and holidays (ADR-0051). */
+.markers { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem; padding: 0; margin: 0 0 1rem; }
+.marker { border-radius: .3rem; padding: .2rem .5rem; font-size: .9rem; background: #eef1f5; }
+.marker .kind { font-weight: 600; margin-right: .3rem; }
+.marker .span { color: var(--muted); margin-right: .3rem; }
+.marker.publicholiday { background: #fde7c8; }
+.marker.schoolholiday { background: #e2f0d9; }
+.marker.note { background: #dbe8f7; }
+.notes-form { display: grid; grid-template-columns: max-content 1fr; gap: .5rem .8rem; align-items: center; max-width: 40rem; margin-bottom: 1.5rem; }
+.notes-form textarea { font: inherit; min-height: 4rem; }
+.notes-form .actions { grid-column: 2; display: flex; gap: .5rem; }
+td.markers-cell { font-size: .85rem; color: var(--muted); }

@@ -74,6 +74,7 @@ builder.Services.AddSingleton<ITrafficStore, SqlTrafficStore>();
 builder.Services.AddSingleton(new DataPaths(dataDirectory));
 builder.Services.AddHostedService<CountingWorker>();
 builder.Services.AddHostedService<WeatherWorker>();
+builder.Services.AddHostedService<HolidayWorker>();
 builder.Services.AddHostedService<CameraSceneWorker>();
 
 try

@@ -51,20 +51,24 @@ public class SiteOptionsTests
     [InlineData(VehicleClass.Motorcycle, null, 0.92f, false)] // no speed: no decision
     [InlineData(VehicleClass.EScooter, 4.5f, 0.05f, true)]    // pedestrian on the far sidewalk taken for an e-scooter
     [InlineData(VehicleClass.EScooter, 9f, 0.92f, false)]     // slow, but faster than walking
-    [InlineData(VehicleClass.EScooter, 4.5f, 0.40f, false)]   // on the road
-    public void Slow_motorcycles_and_e_scooters_on_the_sidewalk_are_not_vehicles(VehicleClass vehicleClass, float? speed, float position, bool dropped)
+    [InlineData(VehicleClass.EScooter, 5.4f, 0.40f, true)]    // pedestrian crossing the road at the line (ADR-0050)
+    [InlineData(VehicleClass.EScooter, 14f, 0.40f, false)]    // e-scooter on the road
+    [InlineData(VehicleClass.EScooter, null, 0.40f, false)]   // no speed: no decision
+    public void Slow_motorcycles_on_the_sidewalk_and_slow_e_scooters_are_not_vehicles(VehicleClass vehicleClass, float? speed, float position, bool dropped)
     {
         var site = new SiteOptions { FarKerb = 0.15f, NearKerb = 0.67f };
 
-        Assert.Equal(dropped, site.IsSidewalkPseudoVehicle(vehicleClass, speed, position));
+        Assert.Equal(dropped, site.IsPseudoVehicle(vehicleClass, speed, position));
     }
 
     [Fact]
-    public void The_sidewalk_rule_needs_the_kerbs_and_can_be_switched_off()
+    public void The_motorcycle_rule_needs_the_kerbs_and_both_rules_can_be_switched_off()
     {
-        Assert.False(new SiteOptions().IsSidewalkPseudoVehicle(VehicleClass.Motorcycle, 5, 0.92f));
+        Assert.False(new SiteOptions().IsPseudoVehicle(VehicleClass.Motorcycle, 5, 0.92f));
         Assert.False(new SiteOptions { FarKerb = 0.15f, NearKerb = 0.67f, SidewalkMotorcycleMaxKmh = null }
-            .IsSidewalkPseudoVehicle(VehicleClass.Motorcycle, 5, 0.92f));
+            .IsPseudoVehicle(VehicleClass.Motorcycle, 5, 0.92f));
+        Assert.True(new SiteOptions().IsPseudoVehicle(VehicleClass.EScooter, 5, 0.40f));
+        Assert.False(new SiteOptions { SlowEScooterMaxKmh = null }.IsPseudoVehicle(VehicleClass.EScooter, 5, 0.40f));
     }
 
     [Fact]

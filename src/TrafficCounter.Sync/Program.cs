@@ -41,9 +41,17 @@ switch (args.FirstOrDefault())
     case "weather":
         return await WeatherAsync(
             options.TryGetValue("provider", out string? weatherProvider) ? Enum.Parse<DatabaseProvider>(weatherProvider, ignoreCase: true) : TrafficCounterDatabase.DefaultProvider,
-            options.GetValueOrDefault("station") ?? StationFromConfig(),
+            options.GetValueOrDefault("station") ?? SiteSetting("Weather", "StationId"),
             options.GetValueOrDefault("from"),
             options.GetValueOrDefault("to"));
+    case "holidays":
+        return await HolidaysAsync(options);
+    case "list-notes":
+        return await ListNotesAsync(options);
+    case "add-note":
+        return await AddNoteAsync(options);
+    case "delete-note":
+        return await DeleteNoteAsync(options);
     default:
         Console.WriteLine(
             $"""
@@ -94,6 +102,15 @@ switch (args.FirstOrDefault())
               TrafficCounter.Sync weather [--provider SqlServer|PostgreSql] [--station <DWD id>] [--from yyyy-MM-dd] [--to yyyy-MM-dd]
                   Imports hourly weather of a DWD station from Bright Sky (ADR-0023); default: the last 7 days and
                   the station in TrafficCounter:Weather:StationId of the private site configuration.
+              TrafficCounter.Sync holidays [--provider SqlServer|PostgreSql] [--subdivision <code>] [--from-year <yyyy>] [--to-year <yyyy>]
+                  Imports public and school holidays of a region from OpenHolidays (ADR-0051); default: last, this
+                  and next year and the region in TrafficCounter:Holidays:Subdivision (e.g. DE-BE) of the site configuration.
+              TrafficCounter.Sync list-notes [--from yyyy-MM-dd] [--to yyyy-MM-dd]
+              TrafficCounter.Sync add-note --from <day or time> --to <day or time> --text <text>
+              TrafficCounter.Sync delete-note --id <sync id>
+                  Notes on time spans shown in the analysis app (ADR-0051), e.g. a building site; in PostgreSQL, the
+                  next sync copies them on. A day without a time means the whole day: --from 2026-10-27 --to 2026-10-31
+                  covers 27 to 31 October. list-notes shows the last 30 days and the coming 30 by default.
 
             Connections: {TrafficCounterDatabase.SqlServerVariable} (SQL Server, default the local instance) and
             {TrafficCounterDatabase.PostgresVariable} (PostgreSQL, without password), password from {PasswordVariable}.
@@ -509,7 +526,69 @@ static async Task<int> WeatherAsync(DatabaseProvider provider, string? station, 
     return 0;
 }
 
-static string? StationFromConfig()
+static async Task<int> HolidaysAsync(Dictionary<string, string> options)
+{
+    string? subdivision = options.GetValueOrDefault("subdivision") ?? SiteSetting("Holidays", "Subdivision");
+    if (string.IsNullOrWhiteSpace(subdivision))
+    {
+        Console.Error.WriteLine("No region: pass --subdivision or set TrafficCounter:Holidays:Subdivision in the site configuration.");
+        return 2;
+    }
+
+    DatabaseProvider provider = options.TryGetValue("provider", out string? name) ? Enum.Parse<DatabaseProvider>(name, ignoreCase: true) : TrafficCounterDatabase.DefaultProvider;
+    int year = DateTime.Today.Year;
+    int fromYear = options.TryGetValue("from-year", out string? f) ? int.Parse(f, System.Globalization.CultureInfo.InvariantCulture) : year - 1;
+    int toYear = options.TryGetValue("to-year", out string? t) ? int.Parse(t, System.Globalization.CultureInfo.InvariantCulture) : year + 1;
+    await using TrafficCounterDbContext db = Open(provider);
+    await db.Database.MigrateAsync();
+    using var http = new HttpClient { BaseAddress = new Uri(HolidayImport.DefaultBaseUrl), Timeout = TimeSpan.FromSeconds(60) };
+    int changed = await HolidayImport.ImportAsync(db, http, subdivision, new DateOnly(fromYear, 1, 1), new DateOnly(toYear, 12, 31));
+    Console.WriteLine($"{provider}: {changed} holidays of {subdivision} inserted, changed or removed ({fromYear}–{toYear})");
+    return 0;
+}
+
+async Task<int> ListNotesAsync(Dictionary<string, string> options)
+{
+    DateTime from = options.TryGetValue("from", out string? f) ? ParseDay(f) : DateTime.Today.AddDays(-30);
+    DateTime to = options.TryGetValue("to", out string? t) ? ParseDay(t).AddDays(1) : DateTime.Today.AddDays(31);
+    await using TrafficCounterDbContext db = Open(DatabaseProvider.PostgreSql);
+    foreach (DayNote note in await DayNotes.ListAsync(db, new DateTimeOffset(from), new DateTimeOffset(to)))
+    {
+        Console.WriteLine($"{note.SyncId}  {note.Start.ToLocalTime():yyyy-MM-dd HH:mm} – {note.End.ToLocalTime():yyyy-MM-dd HH:mm}  {note.Text}");
+    }
+
+    return 0;
+}
+
+async Task<int> AddNoteAsync(Dictionary<string, string> options)
+{
+    DateTimeOffset start = ParseNoteTime(options["from"], endOfDay: false);
+    DateTimeOffset end = ParseNoteTime(options["to"], endOfDay: true);
+    await using TrafficCounterDbContext db = Open(DatabaseProvider.PostgreSql);
+    DayNote note = await DayNotes.AddAsync(db, start, end, options["text"]);
+    Console.WriteLine($"PostgreSql: note {note.SyncId} added ({start:yyyy-MM-dd HH:mm} – {end:yyyy-MM-dd HH:mm}); the next sync copies it on");
+    return 0;
+}
+
+async Task<int> DeleteNoteAsync(Dictionary<string, string> options)
+{
+    await using TrafficCounterDbContext db = Open(DatabaseProvider.PostgreSql);
+    bool deleted = await DayNotes.DeleteAsync(db, Guid.Parse(options["id"]));
+    Console.WriteLine(deleted ? "PostgreSql: note deleted; the next sync passes it on" : "No such note");
+    return deleted ? 0 : 1;
+}
+
+static DateTime ParseDay(string value) => DateTime.Parse(value, System.Globalization.CultureInfo.InvariantCulture).Date;
+
+// A day without a time: its start, or as end the midnight after it, so the end day is included.
+static DateTimeOffset ParseNoteTime(string value, bool endOfDay)
+{
+    DateTime time = DateTime.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
+    bool dayOnly = value.Trim().Length <= 10;
+    return new DateTimeOffset(dayOnly && endOfDay ? time.Date.AddDays(1) : time);
+}
+
+static string? SiteSetting(string section, string key)
 {
     if (PrivateLocations.ConfigPath is not { } path || !File.Exists(path))
     {
@@ -518,8 +597,8 @@ static string? StationFromConfig()
 
     using var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
     return json.RootElement.TryGetProperty("TrafficCounter", out var root)
-        && root.TryGetProperty("Weather", out var weather)
-        && weather.TryGetProperty("StationId", out var id) ? id.GetString() : null;
+        && root.TryGetProperty(section, out var part)
+        && part.TryGetProperty(key, out var value) ? value.GetString() : null;
 }
 
 static async Task<object?> ScalarAsync(NpgsqlConnection connection, string sql, string name)

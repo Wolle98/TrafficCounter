@@ -22,6 +22,54 @@ namespace TrafficCounter.Data.Migrations.Postgres
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("TrafficCounter.Data.CalendarEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("EnglishName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("ExternalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ImportedAt")
+                        .HasPrecision(0)
+                        .HasColumnType("timestamp(0) with time zone");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Subdivision")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExternalId")
+                        .IsUnique();
+
+                    b.HasIndex("Subdivision", "StartDate");
+
+                    b.ToTable("CalendarEntry", (string)null);
+                });
+
             modelBuilder.Entity("TrafficCounter.Data.Camera", b =>
                 {
                     b.Property<int>("Id")
@@ -59,6 +107,51 @@ namespace TrafficCounter.Data.Migrations.Postgres
                         .IsUnique();
 
                     b.ToTable("Camera", (string)null);
+                });
+
+            modelBuilder.Entity("TrafficCounter.Data.DayNote", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasPrecision(3)
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<bool>("Deleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("End")
+                        .HasPrecision(0)
+                        .HasColumnType("timestamp(0) with time zone");
+
+                    b.Property<DateTimeOffset>("Start")
+                        .HasPrecision(0)
+                        .HasColumnType("timestamp(0) with time zone");
+
+                    b.Property<Guid>("SyncId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasPrecision(3)
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Start");
+
+                    b.HasIndex("SyncId")
+                        .IsUnique();
+
+                    b.ToTable("DayNote", (string)null);
                 });
 
             modelBuilder.Entity("TrafficCounter.Data.DriftMeasurement", b =>
@@ -349,7 +442,7 @@ namespace TrafficCounter.Data.Migrations.Postgres
                         new
                         {
                             Id = (byte)7,
-                            Name = "Landwirtschaft"
+                            Name = "Landwirtschaft & Baufahrzeuge"
                         },
                         new
                         {

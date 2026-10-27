@@ -250,3 +250,66 @@ public sealed class WeatherHour
 
     public DateTimeOffset ImportedAt { get; set; }
 }
+
+/// <summary>Kind of a <see cref="CalendarEntry"/>. Values are persisted – never renumber.</summary>
+public enum CalendarEntryKind : byte
+{
+    PublicHoliday = 1,
+
+    SchoolHoliday = 2,
+}
+
+/// <summary>
+/// A public holiday or school holiday of the site's region (ADR-0051), imported from OpenHolidays. They explain
+/// unusual traffic; the region code (e.g. "DE-BE") is kept in the private configuration.
+/// </summary>
+public sealed class CalendarEntry
+{
+    public long Id { get; set; }
+
+    /// <summary>OpenHolidays id of the entry, the same in every database.</summary>
+    public Guid ExternalId { get; set; }
+
+    public CalendarEntryKind Kind { get; set; }
+
+    public DateOnly StartDate { get; set; }
+
+    /// <summary>Last day, inclusive.</summary>
+    public DateOnly EndDate { get; set; }
+
+    /// <summary>Name in the country's language, e.g. "Herbstferien".</summary>
+    public required string Name { get; set; }
+
+    public string? EnglishName { get; set; }
+
+    /// <summary>Region the import asked for, e.g. "DE-BE".</summary>
+    public required string Subdivision { get; set; }
+
+    public DateTimeOffset ImportedAt { get; set; }
+}
+
+/// <summary>
+/// A note on a time span entered by hand (ADR-0051), e.g. a building site that narrows the road to one lane. Shown
+/// in the analysis app on every day it touches. Deleting only marks it, so the sync can pass the deletion on.
+/// </summary>
+public sealed class DayNote
+{
+    /// <summary>Identity across databases, for synchronising SQL Server and PostgreSQL (ADR-0030).</summary>
+    public Guid SyncId { get; set; } = Guid.NewGuid();
+
+    public long Id { get; set; }
+
+    public DateTimeOffset Start { get; set; }
+
+    /// <summary>End, exclusive; a note for whole days ends at midnight after the last day.</summary>
+    public DateTimeOffset End { get; set; }
+
+    public required string Text { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>Last change; of two copies the newer one wins in the sync.</summary>
+    public DateTimeOffset UpdatedAt { get; set; }
+
+    public bool Deleted { get; set; }
+}

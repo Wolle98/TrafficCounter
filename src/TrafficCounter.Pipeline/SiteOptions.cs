@@ -96,25 +96,25 @@ public sealed class SiteOptions
     public float? SidewalkMotorcycleMaxKmh { get; set; } = 10;
 
     /// <summary>
-    /// E-scooters slower than this on a sidewalk are not counted: pedestrians are now and then taken for an e-scooter,
-    /// at 4–5 km/h, while e-scooters ride at 14–21 km/h even on the sidewalk. A pushed e-scooter is not counted
-    /// either. Null: off (ADR-0048).
+    /// E-scooters slower than this are not counted, on the sidewalk and on the road: pedestrians are now and then taken
+    /// for an e-scooter, at 2–8 km/h, also when they cross the road at the counting line, while e-scooters ride at 12 km/h
+    /// or more. A pushed e-scooter is not counted either. Needs the speed scale, not the kerbs. Null: off (ADR-0048,
+    /// ADR-0050).
     /// </summary>
-    public float? SidewalkEScooterMaxKmh { get; set; } = 8;
+    public float? SlowEScooterMaxKmh { get; set; } = 8;
 
     /// <summary>
     /// True if the passage is a pram, a walker or a pedestrian taken for a motorcycle or an e-scooter (see
-    /// <see cref="SidewalkMotorcycleMaxKmh"/>, <see cref="SidewalkEScooterMaxKmh"/>).
+    /// <see cref="SidewalkMotorcycleMaxKmh"/>, <see cref="SlowEScooterMaxKmh"/>).
     /// </summary>
-    public bool IsSidewalkPseudoVehicle(VehicleClass vehicleClass, float? speedKmh, float linePosition) =>
-        (vehicleClass switch
-        {
-            VehicleClass.Motorcycle => SidewalkMotorcycleMaxKmh,
-            VehicleClass.EScooter => SidewalkEScooterMaxKmh,
-            _ => null,
-        }) is float limit && speedKmh is float speed && speed < limit
-        && FarKerb is float far && NearKerb is float near
-        && (linePosition < Math.Min(far, near) || linePosition > Math.Max(far, near));
+    public bool IsPseudoVehicle(VehicleClass vehicleClass, float? speedKmh, float linePosition) => vehicleClass switch
+    {
+        VehicleClass.Motorcycle => SidewalkMotorcycleMaxKmh is float limit && speedKmh is float speed && speed < limit
+            && FarKerb is float far && NearKerb is float near
+            && (linePosition < Math.Min(far, near) || linePosition > Math.Max(far, near)),
+        VehicleClass.EScooter => SlowEScooterMaxKmh is float limit && speedKmh is float speed && speed < limit,
+        _ => false,
+    };
 
     /// <summary>Half width of the speed measuring zone around the counting line, as a fraction of the image width.</summary>
     public float SpeedZoneFraction { get; set; } = 0.2f;

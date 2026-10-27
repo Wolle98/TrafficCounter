@@ -143,7 +143,7 @@
     <value>Bus</value>
   </data>
   <data name="Class.Agricultural" xml:space="preserve">
-    <value>Agricultural</value>
+    <value>Agricultural &amp; construction</value>
   </data>
   <data name="Class.Motorcycle" xml:space="preserve">
     <value>Motorcycle</value>
@@ -540,5 +540,68 @@
   </data>
   <data name="Table.Total" xml:space="preserve">
     <value>Total</value>
+  </data>
+  <data name="Nav.Notes" xml:space="preserve">
+    <value>Notes</value>
+  </data>
+  <data name="Notes.Intro" xml:space="preserve">
+    <value>Notes on days or hours explain unusual traffic, e.g. a building site that narrows the road. Public and school holidays of the region are added automatically.</value>
+  </data>
+  <data name="Notes.New" xml:space="preserve">
+    <value>New note</value>
+  </data>
+  <data name="Notes.Edit" xml:space="preserve">
+    <value>Change note</value>
+  </data>
+  <data name="Notes.Text" xml:space="preserve">
+    <value>Text</value>
+  </data>
+  <data name="Notes.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Notes.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Notes.TimeHint" xml:space="preserve">
+    <value>Without times the note covers the whole days from the first to the last day.</value>
+  </data>
+  <data name="Notes.List" xml:space="preserve">
+    <value>Notes</value>
+  </data>
+  <data name="Notes.None" xml:space="preserve">
+    <value>No notes yet.</value>
+  </data>
+  <data name="Notes.Span" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Notes.EditButton" xml:space="preserve">
+    <value>Change</value>
+  </data>
+  <data name="Notes.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Notes.Holidays" xml:space="preserve">
+    <value>Holidays {0}</value>
+  </data>
+  <data name="Notes.NoHolidays" xml:space="preserve">
+    <value>No holidays imported (TrafficCounter:Holidays:Subdivision not set).</value>
+  </data>
+  <data name="Notes.TextMissing" xml:space="preserve">
+    <value>Please enter a text.</value>
+  </data>
+  <data name="Marker.Note" xml:space="preserve">
+    <value>Note</value>
+  </data>
+  <data name="Marker.PublicHoliday" xml:space="preserve">
+    <value>Public holiday</value>
+  </data>
+  <data name="Marker.SchoolHoliday" xml:space="preserve">
+    <value>School holidays</value>
+  </data>
+  <data name="Marker.Times" xml:space="preserve">
+    <value>{0}–{1}</value>
+  </data>
+  <data name="Table.Markers" xml:space="preserve">
+    <value>Notes</value>
   </data>
 </root>

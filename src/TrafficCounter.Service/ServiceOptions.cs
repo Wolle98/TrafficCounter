@@ -107,6 +107,9 @@ public sealed class ServiceOptions
     /// <summary>Hourly weather import from the DWD (ADR-0023); off unless a station is set.</summary>
     public WeatherOptions Weather { get; set; } = new();
 
+    /// <summary>Daily import of public and school holidays (ADR-0051); off unless a region is set.</summary>
+    public HolidayOptions Holidays { get; set; } = new();
+
     /// <summary>Show the debug window (console mode only, ADR-0012).</summary>
     public bool Preview { get; set; }
 

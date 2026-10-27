@@ -36,6 +36,10 @@ public class TrafficCounterDbContext : DbContext
 
     public DbSet<WeatherHour> WeatherHours => Set<WeatherHour>();
 
+    public DbSet<CalendarEntry> CalendarEntries => Set<CalendarEntry>();
+
+    public DbSet<DayNote> DayNotes => Set<DayNote>();
+
     /// <summary>
     /// SQL Server keeps local times with their offset; synchronised rows from PostgreSQL (UTC) are converted to local
     /// time, so all rows of one database look alike. The instant is the same either way.
@@ -158,6 +162,29 @@ public class TrafficCounterDbContext : DbContext
             e.HasIndex(w => new { w.StationId, w.Hour }).IsUnique();
         });
 
+        modelBuilder.Entity<CalendarEntry>(e =>
+        {
+            e.ToTable("CalendarEntry");
+            e.HasIndex(c => c.ExternalId).IsUnique();
+            e.Property(c => c.Name).HasMaxLength(200);
+            e.Property(c => c.EnglishName).HasMaxLength(200);
+            e.Property(c => c.Subdivision).HasMaxLength(20);
+            e.Property(c => c.ImportedAt).HasPrecision(0);
+            e.HasIndex(c => new { c.Subdivision, c.StartDate });
+        });
+
+        modelBuilder.Entity<DayNote>(e =>
+        {
+            e.ToTable("DayNote");
+            e.HasIndex(n => n.SyncId).IsUnique();
+            e.Property(n => n.Start).HasPrecision(0);
+            e.Property(n => n.End).HasPrecision(0);
+            e.Property(n => n.Text).HasMaxLength(1000);
+            e.Property(n => n.CreatedAt).HasPrecision(3);
+            e.Property(n => n.UpdatedAt).HasPrecision(3);
+            e.HasIndex(n => n.Start);
+        });
+
         modelBuilder.Entity<VehicleClassInfo>(e =>
         {
             e.ToTable("VehicleClass");
@@ -171,7 +198,7 @@ public class TrafficCounterDbContext : DbContext
                 new VehicleClassInfo { Id = VehicleClass.Bus, Name = "Bus" },
                 new VehicleClassInfo { Id = VehicleClass.Motorcycle, Name = "Motorrad/Motorroller" },
                 new VehicleClassInfo { Id = VehicleClass.Bicycle, Name = "Fahrrad/E-Scooter" },
-                new VehicleClassInfo { Id = VehicleClass.Agricultural, Name = "Landwirtschaft" },
+                new VehicleClassInfo { Id = VehicleClass.Agricultural, Name = "Landwirtschaft & Baufahrzeuge" },
                 new VehicleClassInfo { Id = VehicleClass.EScooter, Name = "E-Scooter" });
         });
     }
