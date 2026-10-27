@@ -373,12 +373,15 @@ public class ByteTrackerTests
     }
 
     [Theory]
-    [InlineData(Core.Operations.LightingCondition.Day, false)]
-    [InlineData(Core.Operations.LightingCondition.Night, true)]
-    public void Unsure_detections_start_tracks_only_at_night(Core.Operations.LightingCondition lighting, bool tracked)
+    [InlineData(Core.Operations.LightingCondition.Day, false, false)]
+    [InlineData(Core.Operations.LightingCondition.Dusk, false, false)]
+    [InlineData(Core.Operations.LightingCondition.Night, false, true)]
+    [InlineData(Core.Operations.LightingCondition.Dusk, true, true)]
+    [InlineData(Core.Operations.LightingCondition.Day, true, false)]
+    public void Unsure_detections_start_tracks_only_at_night(Core.Operations.LightingCondition lighting, bool nightAtDusk, bool tracked)
     {
         // Headlights in the dark: the model stays around 0.3 although the vehicle is real.
-        var tracker = new ByteTracker();
+        var tracker = new ByteTracker(new TrackerSettings { NightThresholdsAtDusk = nightAtDusk });
         TrackingResult result = null!;
         for (int i = 0; i < 5; i++)
         {

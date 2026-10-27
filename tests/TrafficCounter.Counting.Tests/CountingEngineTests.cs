@@ -71,6 +71,26 @@ public class CountingEngineTests
     }
 
     [Fact]
+    public void Tracks_ending_uncounted_are_reported_with_the_reason()
+    {
+        var engine = CreateEngine();
+
+        Assert.Empty(Drive(engine, 1, Range(800, 560, -20)));
+        UncountedTrack lost = Assert.Single(engine.Uncounted);
+        Assert.Equal((1, UncountedReason.NotCrossed, 13, -300f, -60f), (lost.TrackId, lost.Reason, lost.Frames, lost.FirstDistance, lost.LastDistance));
+        Assert.True(lost.Approached);
+
+        Drive(engine, 2, Range(560, 800, 20));
+        Assert.False(Assert.Single(engine.Uncounted).Approached); // moving away from the line
+
+        Assert.Empty(Drive(engine, 3, [.. Range(700, 400, -20), .. Range(420, 700, 20)]));
+        Assert.Equal(UncountedReason.TurnedBack, Assert.Single(engine.Uncounted).Reason);
+
+        Assert.Single(Drive(engine, 4, Range(700, 300, -20)));
+        Assert.Empty(engine.Uncounted);
+    }
+
+    [Fact]
     public void Track_crossing_right_to_left_is_counted_once_as_direction_A()
     {
         List<VehiclePassageEvent> events = Drive(CreateEngine(), 1, Range(700, 300, -20));

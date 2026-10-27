@@ -5,6 +5,7 @@ using OpenCvSharp;
 using TrafficCounter.Core;
 using TrafficCounter.Core.Geometry;
 using TrafficCounter.Core.Operations;
+using TrafficCounter.Counting;
 using TrafficCounter.Data;
 using TrafficCounter.Detection.Onnx;
 using TrafficCounter.Pipeline;
@@ -233,6 +234,15 @@ internal sealed partial class CountingWorker(
                         {
                             writer.Enqueue(new PassageRecord(cameraId, periodId, passage, lighting.Classify(passage.PassedAt)));
                             LogPassage(passage);
+                        }
+
+                        foreach (UncountedTrack track in result.Uncounted ?? [])
+                        {
+                            if (track.Approached)
+                            {
+                                LogUncounted(track.TrackId, track.Reason, track.Class, track.Frames, track.FirstSeen, track.LastSeen,
+                                    (track.LastSeen - track.FirstSeen).TotalSeconds, track.FirstDistance, track.LastDistance);
+                            }
                         }
 
                         if (_options.QualitySampleInterval > 0 && processedInMinute % _options.QualitySampleInterval == 1)
@@ -664,6 +674,11 @@ internal sealed partial class CountingWorker(
     [LoggerMessage(Level = LogLevel.Debug, Message = "Passage track {TrackId}: {Direction} {VehicleClass} ({ClassConfidence:0.00}), {Trailers} trailer(s), line position {LinePosition:0.00}, {Frames} frames, at {PassedAt:HH:mm:ss.fff}; speed {Speed} from {SpeedSamples} positions over {SpeedSeconds:0.00} s in the zone, track {TrackSeconds:0.00} s from {FirstDistance:0} to {LastDistance:0} px beside the line")]
     private partial void LogPassage(int trackId, TravelDirection direction, VehicleClass vehicleClass, float? classConfidence, int trailers, float linePosition, int frames, DateTimeOffset passedAt,
         string speed, int speedSamples, double speedSeconds, double trackSeconds, float firstDistance, float lastDistance);
+
+    // Tracks that ended without being counted, to explain missed vehicles (e.g. lost under occlusion before the line).
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Uncounted track {TrackId}: {Reason} {VehicleClass}, {Frames} frames, {FirstSeen:HH:mm:ss.fff}–{LastSeen:HH:mm:ss.fff} ({TrackSeconds:0.00} s) from {FirstDistance:0} to {LastDistance:0} px beside the line")]
+    private partial void LogUncounted(int trackId, UncountedReason reason, VehicleClass vehicleClass, int frames, DateTimeOffset firstSeen, DateTimeOffset lastSeen,
+        double trackSeconds, float firstDistance, float lastDistance);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Network {MinuteStart:HH:mm}: ping {Host} sent {Sent}, lost {Lost}, median {Median} ms, 90 % {P90} ms, max {Max} ms")]
     private partial void LogNetworkMinute(DateTimeOffset minuteStart, string host, int sent, int lost, long? median, long? p90, long? max);

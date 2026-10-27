@@ -4,6 +4,18 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.10.12] – 2026-10-27
+
+### Added
+
+- Tracks that end without being counted (lost before the line, too short, turned back, trailer, duplicate) are written to the debug log with frames and distances to the line; the regression lists them under each missed passage.
+- Regression: class scores per annotated class (recall, precision, F1) and the macro F1 for day, dusk, night and all (stage 3 acceptance).
+- `Tracker:NightThresholdsAtDusk` (default off) and the regression option `--dusk-thresholds day|night`, to measure whether the night thresholds should also apply at dusk (ADR-0028).
+
+### Fixed
+
+- `select_for_labelling.py` took the `--from`/`--to` times as summer time; since the change to winter time it selected a range one hour off.
+
 ## [0.10.11] – 2026-10-26
 
 ### Added

@@ -33,7 +33,7 @@ public sealed class ByteTracker(TrackerSettings? settings = null) : ITracker
     public TrackingResult Update(
         IReadOnlyList<Detection> detections, DateTimeOffset timestamp, LightingCondition lighting = LightingCondition.Unknown)
     {
-        bool night = lighting == LightingCondition.Night;
+        bool night = lighting == LightingCondition.Night || (lighting == LightingCondition.Dusk && _settings.NightThresholdsAtDusk);
         float highConfidence = night ? _settings.NightHighConfidence : _settings.HighConfidence;
         float newTrackConfidence = night ? _settings.NightNewTrackConfidence : _settings.NewTrackConfidence;
         _lastUpdate = timestamp;

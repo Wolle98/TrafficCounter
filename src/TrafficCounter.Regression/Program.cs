@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OpenCvSharp;
 using TrafficCounter.Core;
+using TrafficCounter.Counting;
 using TrafficCounter.Detection.Onnx;
 using TrafficCounter.Evaluation;
 using TrafficCounter.Pipeline;
@@ -29,7 +30,7 @@ if (args is ["-h" or "--help", ..])
                                     [--provider Auto|DirectML|Cpu|OpenVino] [--tolerance 1.5]
                                     [--video <video.mp4>] [--new-track-confidence 0.6] [--high-confidence 0.5]
                                     [--max-fps 0] [--motion-gate on|off] [--threads 0] [--openvino-device GPU|CPU|NPU|AUTO]
-                                    [--night-confidence 0.2/0.25] [--enhance none|clahe[:clip]|gamma[:gamma]|grayscale] [--enhance-from night|dusk|day]
+                                    [--night-confidence 0.2/0.25] [--dusk-thresholds day|night] [--enhance none|clahe[:clip]|gamma[:gamma]|grayscale] [--enhance-from night|dusk|day]
                                     [--resize linear|area] [--provider TensorRT|Cuda --nvidia-libs <dir;dir>]
           (load settings as in the service, ADR-0029; the run also reports the computing load)
           TrafficCounter.Regression --video <video.mp4> --trace <mm:ss-mm:ss> [--config ...] [--model ...]
@@ -87,6 +88,12 @@ if (options.TryGetValue("two-wheeler-confidence", out string? twoWheeler))
         TwoWheelerHighConfidence = float.Parse(parts[0], CultureInfo.InvariantCulture),
         TwoWheelerNewTrackConfidence = float.Parse(parts[^1], CultureInfo.InvariantCulture),
     };
+}
+
+if (options.GetValueOrDefault("dusk-thresholds") is { } duskThresholds)
+{
+    // "night" or "day": which tracker thresholds apply at dusk (ADR-0028).
+    trackerSettings = trackerSettings with { NightThresholdsAtDusk = duskThresholds == "night" };
 }
 
 if (options.TryGetValue("night-confidence", out string? night))
@@ -258,7 +265,7 @@ if (options.GetValueOrDefault("count") is "true" or "on")
     {
         foreach (string video in videos)
         {
-            (_, string load, List<DetectedPassage> detected, _) = await EvaluateAsync(video, SiteFor(video), detector, [], tolerance, trackerSettings, processing);
+            (_, string load, List<DetectedPassage> detected, _, _) = await EvaluateAsync(video, SiteFor(video), detector, [], tolerance, trackerSettings, processing);
             DateTimeOffset start = FrameTimestampsFile.TryRead(video) is { Count: > 0 } stamps ? stamps[0] : DateTimeOffset.MinValue;
             Console.WriteLine($"{Path.GetFileName(video)}: {detected.Count} passages ({load})");
             Console.WriteLine($"  {"from",-6} {"all",5} {"A",5} {"B",5}  by class");
@@ -302,9 +309,9 @@ if (options.TryGetValue("mine-with", out string? teacherModel))
         Dictionary<string, List<GroundTruthEntry>> mined = [];
         foreach (string video in videos)
         {
-            (_, _, List<DetectedPassage> student, Func<ImageMotion, TravelDirection> toDirection) =
+            (_, _, List<DetectedPassage> student, Func<ImageMotion, TravelDirection> toDirection, _) =
                 await EvaluateAsync(video, SiteFor(video), detector, [], tolerance, trackerSettings, processing);
-            (_, _, List<DetectedPassage> taught, _) = await EvaluateAsync(video, SiteFor(video), teacher, [], tolerance, trackerSettings, processing);
+            (_, _, List<DetectedPassage> taught, _, _) = await EvaluateAsync(video, SiteFor(video), teacher, [], tolerance, trackerSettings, processing);
             List<GroundTruthEntry> only = [.. taught
                 .Where(t => !student.Any(s => s.Direction == t.Direction && (s.Offset - t.Offset).Duration() <= tolerance))
                 .Select(t => new GroundTruthEntry(t.Offset, toDirection(ImageMotion.LeftToRight) == t.Direction ? ImageMotion.LeftToRight : ImageMotion.RightToLeft, t.Class))];
@@ -347,7 +354,7 @@ if (speedMode)
     {
         foreach (string video in videos)
         {
-            (_, _, List<DetectedPassage> detected, Func<ImageMotion, TravelDirection> toDirection) = await EvaluateAsync(
+            (_, _, List<DetectedPassage> detected, Func<ImageMotion, TravelDirection> toDirection, _) = await EvaluateAsync(
                 video, SiteFor(video), detector, [], tolerance, trackerSettings, processing);
             all.AddRange(ReportSpeeds(video, SpeedEvaluator.Evaluate(SpeedTruth(video, speedometer), toDirection, detected, tolerance), speedometer));
         }
@@ -364,11 +371,11 @@ using (detector)
     {
         (string[] tags, _) = ReadMetadata(video);
         SiteOptions videoSite = SiteFor(video);
-        (EvaluationResult result, string load, _, _) = await EvaluateAsync(
+        (EvaluationResult result, string load, _, _, List<(TimeSpan Offset, UncountedTrack Track)> uncounted) = await EvaluateAsync(
             video, videoSite, detector, GroundTruthFile.Read(GroundTruthFile.PathFor(video)), tolerance, trackerSettings, processing);
         results.Add((Path.GetFileName(video), tags, result));
         Console.WriteLine($"{Path.GetFileName(video),-28} {string.Join(',', tags),-24} {Format(result)}");
-        PrintDetails(result);
+        PrintDetails(result, uncounted);
         Console.WriteLine($"  load: {load}");
     }
 }
@@ -382,6 +389,26 @@ foreach (string tag in results.SelectMany(r => r.Tags).Distinct().Order())
 
 EvaluationResult total = EvaluationResult.Combine(results.Select(r => r.Result));
 Console.WriteLine($"  {"all",-20} {Format(total)}");
+
+// Stage 3 acceptance: classes of the matched passages, macro F1 >= 0.85, separately for day and night.
+Console.WriteLine();
+Console.WriteLine("Classes (matched passages):");
+foreach (ClassScore s in total.ClassScores())
+{
+    Console.WriteLine(string.Create(
+        CultureInfo.InvariantCulture,
+        $"  {s.Class,-14} annotated {s.Truth,4}  counted as {s.Detected,4}  right {s.Correct,4}  recall {s.Recall,6:P1}  precision {s.Precision,6:P1}  F1 {s.F1:0.000}"));
+}
+
+foreach ((string label, EvaluationResult r) in new[] { "day", "dusk", "night" }
+    .Select(tag => (tag, EvaluationResult.Combine(results.Where(x => x.Tags.Contains(tag)).Select(x => x.Result))))
+    .Append(("all", total)))
+{
+    if (r.MacroF1 is double f1)
+    {
+        Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"  macro F1 {label,-6} {f1:0.000} {(f1 >= 0.85 ? "OK" : "MISSED")} (target 0.85)"));
+    }
+}
 
 // Acceptance targets from the roadmap (stage 1, ADR-0023).
 (string Tags, double Target)[] targets = [("day,dry", 0.95), ("night,dry", 0.85), ("day,rain", 0.90), ("night,rain", 0.80)];
@@ -488,12 +515,14 @@ static void PrintSpeedGroup(string title, List<SpeedCheck> checks)
     }
 }
 
-static async Task<(EvaluationResult Result, string Load, List<DetectedPassage> Detected, Func<ImageMotion, TravelDirection> ToDirection)> EvaluateAsync(
+static async Task<(EvaluationResult Result, string Load, List<DetectedPassage> Detected, Func<ImageMotion, TravelDirection> ToDirection,
+    List<(TimeSpan Offset, UncountedTrack Track)> Uncounted)> EvaluateAsync(
     string video, SiteOptions site, IObjectDetector detector, List<GroundTruthEntry> truth, TimeSpan tolerance,
     TrackerSettings trackerSettings, ProcessingOptions processing)
 {
     using var pipeline = new CountingPipeline(detector, new ByteTracker(trackerSettings), site, processing);
     List<DetectedPassage> detected = [];
+    List<(TimeSpan Offset, UncountedTrack Track)> uncounted = [];
     List<float> speeds = [];
     // Mean detector confidence per track, as the sample collection judges "unsure" tracks (ADR-0026).
     Dictionary<int, (double Sum, int Frames)> trackConfidence = [];
@@ -533,6 +562,7 @@ static async Task<(EvaluationResult Result, string Load, List<DetectedPassage> D
                     .Where(p => trackConfidence.ContainsKey(p.TrackId))
                     .Select(p => (float)(trackConfidence[p.TrackId].Sum / trackConfidence[p.TrackId].Frames)));
                 detected.AddRange(result.Passages.Select(p => new DetectedPassage(p.PassedAt - first.Value, p.Direction, p.Class, p.SpeedKmh)));
+                uncounted.AddRange((result.Uncounted ?? []).Where(u => u.Approached).Select(u => (u.LastSeen - first.Value, u)));
                 speeds.AddRange(result.Passages.Where(p => p.Class == VehicleClass.Car && p.SpeedKmh is not null).Select(p => p.SpeedKmh!.Value));
             }
         }
@@ -563,7 +593,7 @@ static async Task<(EvaluationResult Result, string Load, List<DetectedPassage> D
             + $"median {Percentile(countedConfidence, 0.5):0.00}, 75 % {Percentile(countedConfidence, 0.75):0.00}");
     }
 
-    return (evaluation, load, detected, toDirection);
+    return (evaluation, load, detected, toDirection, uncounted);
 }
 
 // Frame-by-frame log of one section, starting 10 s earlier so the tracker has history. Coordinates are the
@@ -642,7 +672,8 @@ static float Percentile(List<float> values, double p)
     return sorted[(int)Math.Clamp(Math.Round(p * (sorted.Count - 1)), 0, sorted.Count - 1)];
 }
 
-static void PrintDetails(EvaluationResult result)
+// Tracks that ended uncounted shortly before or after a missed passage tell why it was missed.
+static void PrintDetails(EvaluationResult result, List<(TimeSpan Offset, UncountedTrack Track)>? uncounted = null)
 {
     static string Time(TimeSpan t) => $"{(int)t.TotalMinutes:00}:{t.Seconds:00}.{t.Milliseconds / 100}";
 
@@ -653,6 +684,11 @@ static void PrintDetails(EvaluationResult result)
         foreach (GroundTruthEntry e in result.MissedEntries)
         {
             Console.WriteLine($"    missed {Time(e.Offset)} {e.Motion} {e.Class?.ToString() ?? "?"} {e.Note}");
+            foreach ((TimeSpan offset, UncountedTrack u) in (uncounted ?? []).Where(u => u.Offset >= e.Offset - TimeSpan.FromSeconds(3) && u.Offset <= e.Offset + TimeSpan.FromSeconds(2)))
+            {
+                Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                    $"      track {u.TrackId} {u.Reason} {u.Class}, {u.Frames} frames, ended {Time(offset)} at {u.LastDistance:0} px (from {u.FirstDistance:0})"));
+            }
         }
     }
 

@@ -5,6 +5,16 @@ namespace TrafficCounter.Evaluation;
 /// <summary>A passage reported by the counter, relative to the start of the reference video.</summary>
 public sealed record DetectedPassage(TimeSpan Offset, TravelDirection Direction, VehicleClass Class, float? SpeedKmh = null);
 
+/// <summary>Classification of one class among matched passages: annotated with it, counted as it, and both.</summary>
+public sealed record ClassScore(VehicleClass Class, int Truth, int Detected, int Correct)
+{
+    public double Recall => Truth == 0 ? 1 : (double)Correct / Truth;
+
+    public double Precision => Detected == 0 ? 1 : (double)Correct / Detected;
+
+    public double F1 => Truth + Detected == 0 ? 1 : 2.0 * Correct / (Truth + Detected);
+}
+
 public sealed record EvaluationResult(
     int TruthCount,
     int DetectedCount,
@@ -37,6 +47,28 @@ public sealed record EvaluationResult(
     /// so both missed and spurious counts lower it.
     /// </summary>
     public double Accuracy => TruthCount + Spurious == 0 ? 1 : (double)Matched / (TruthCount + Spurious);
+
+    /// <summary>
+    /// Classification scores per annotated class over the matched passages (stage 3): how well the class of a
+    /// counted vehicle is right, independent of whether it was counted at all. Unknown in the ground truth is left
+    /// out; a vehicle counted as Unknown counts as wrong.
+    /// </summary>
+    public IReadOnlyList<ClassScore> ClassScores()
+    {
+        Dictionary<(VehicleClass Truth, VehicleClass Detected), int> known =
+            ClassConfusion.Where(c => c.Key.Truth != VehicleClass.Unknown).ToDictionary(c => c.Key, c => c.Value);
+        return
+        [
+            .. known.Keys.Select(k => k.Truth).Distinct().Order().Select(c => new ClassScore(
+                c,
+                known.Where(k => k.Key.Truth == c).Sum(k => k.Value),
+                known.Where(k => k.Key.Detected == c).Sum(k => k.Value),
+                known.GetValueOrDefault((c, c)))),
+        ];
+    }
+
+    /// <summary>Mean F1 over the annotated classes, each class weighted equally (stage 3 acceptance); null without classes.</summary>
+    public double? MacroF1 => ClassScores() is { Count: > 0 } scores ? scores.Average(s => s.F1) : null;
 
     /// <summary>Adds up several results, e.g. all videos of one category.</summary>
     public static EvaluationResult Combine(IEnumerable<EvaluationResult> results)

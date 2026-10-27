@@ -34,7 +34,9 @@ UNSURE_REASONS = ("class wavers", "unsure detection", "not counted", "recognised
 
 def passages(database: str, start: datetime, end: datetime, machine: str | None) -> list[dict]:
     """Passages in local time from one database via sqlcmd."""
-    where = f"p.PassedAt >= '{start.isoformat()}+02:00' and p.PassedAt < '{end.isoformat()}+02:00'"
+    # Local times get their offset (summer or winter time) from SQL Server.
+    local = "cast('{}' as datetime2) at time zone 'W. Europe Standard Time'"
+    where = f"p.PassedAt >= {local.format(start.isoformat())} and p.PassedAt < {local.format(end.isoformat())}"
     join = ""
     if machine:
         join = "join OperatingPeriod o on o.Id = p.OperatingPeriodId"

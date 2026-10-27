@@ -13,6 +13,7 @@ public sealed class CountingEngine(CountingSettings settings)
     private readonly Dictionary<int, TrackState> _tracks = [];
     private readonly TrailerSettings _trailers = settings.Trailers ?? TrailerSettings.Default;
     private readonly List<VehiclePassageEvent> _recent = [];
+    private readonly List<UncountedTrack> _uncounted = [];
 
     /// <summary>
     /// Bicycles, e-scooters and motorcycles neither tow nor are trailers: riders in line keep a constant gap like a
@@ -34,9 +35,13 @@ public sealed class CountingEngine(CountingSettings settings)
     /// <summary>Tracks currently recognised as trailers (for the debug preview).</summary>
     public IEnumerable<int> TrailerTrackIds => _tracks.Values.Where(s => s.IsTrailer).Select(s => s.TrackId);
 
+    /// <summary>Tracks that ended in the last <see cref="Process"/> call without being counted, to explain missed vehicles.</summary>
+    public IReadOnlyList<UncountedTrack> Uncounted => _uncounted;
+
     public IReadOnlyList<VehiclePassageEvent> Process(TrackingResult result)
     {
         List<VehiclePassageEvent> passages = [];
+        _uncounted.Clear();
 
         foreach (TrackedObject obj in result.Active)
         {
@@ -58,15 +63,22 @@ public sealed class CountingEngine(CountingSettings settings)
                 && state.DistanceBeyondLine >= settings.EmitDistancePixels
                 && (result.Timestamp - state.Crossing!.Value.At).TotalSeconds >= settings.EmitDelaySeconds)
             {
-                Add(passages, Emit(state));
+                AddOrReport(passages, state);
             }
         }
 
         foreach (int trackId in result.RemovedTrackIds)
         {
-            if (_tracks.TryGetValue(trackId, out TrackState? state) && IsReadyToEmit(state) && state.EndedOnFarSide)
+            if (_tracks.TryGetValue(trackId, out TrackState? state))
             {
-                Add(passages, Emit(state));
+                if (IsReadyToEmit(state) && state.EndedOnFarSide)
+                {
+                    AddOrReport(passages, state);
+                }
+                else if (!state.Emitted)
+                {
+                    _uncounted.Add(state.ToUncounted(UncountedReasonOf(state)));
+                }
             }
 
             _tracks.Remove(trackId);
@@ -89,8 +101,23 @@ public sealed class CountingEngine(CountingSettings settings)
         return passages;
     }
 
+    private void AddOrReport(List<VehiclePassageEvent> passages, TrackState state)
+    {
+        if (!Add(passages, Emit(state)))
+        {
+            _uncounted.Add(state.ToUncounted(UncountedReason.Duplicate));
+        }
+    }
+
+    private UncountedReason UncountedReasonOf(TrackState state) =>
+        state.IsTrailer || state.LeadingClass == VehicleClass.Trailer ? UncountedReason.Trailer
+        : state.Crossing is null ? UncountedReason.NotCrossed
+        : state.Frames < settings.MinTrackFrames ? UncountedReason.TooShort
+        : UncountedReason.TurnedBack;
+
     /// <summary>Adds a passage unless it is a second track of a vehicle already counted (see <see cref="CountingSettings.DuplicateSeconds"/>).</summary>
-    private void Add(List<VehiclePassageEvent> passages, VehiclePassageEvent passage)
+    /// <returns>False if it was dropped as a duplicate.</returns>
+    private bool Add(List<VehiclePassageEvent> passages, VehiclePassageEvent passage)
     {
         _recent.RemoveAll(r => (passage.PassedAt - r.PassedAt).Duration().TotalSeconds > 10);
         bool duplicate = !IsTwoWheeler(passage.Class) && _recent.Any(r =>
@@ -99,11 +126,12 @@ public sealed class CountingEngine(CountingSettings settings)
             && MathF.Abs(passage.LinePosition - r.LinePosition) <= settings.DuplicateLineTolerance);
         if (duplicate)
         {
-            return;
+            return false;
         }
 
         _recent.Add(passage);
         passages.Add(passage);
+        return true;
     }
 
     // A track detected as a trailer is never a vehicle of its own, even if no towing vehicle was found (ADR-0047).
@@ -386,6 +414,9 @@ public sealed class CountingEngine(CountingSettings settings)
                 _candidateLeader = null;
             }
         }
+
+        public UncountedTrack ToUncounted(UncountedReason reason) =>
+            new(trackId, LeadingClass, Frames, FirstTimestamp, LastTimestamp, FirstDistance, LastDistance ?? 0, reason);
 
         public VehiclePassageEvent Emit(int trailers, SpeedSettings? speed)
         {

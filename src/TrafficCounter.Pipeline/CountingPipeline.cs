@@ -11,6 +11,7 @@ namespace TrafficCounter.Pipeline;
 /// <summary>Everything the pipeline produced for one frame.</summary>
 /// <param name="TrailerTrackIds">Active tracks recognised as trailers of another vehicle (not counted themselves).</param>
 /// <param name="DetectorRan">False if the motion gate skipped detection, tracking and counting for this frame.</param>
+/// <param name="Uncounted">Tracks that ended in this frame without being counted (to explain missed vehicles).</param>
 public sealed record FrameResult(
     Rect Band,
     LineSegment Line,
@@ -19,7 +20,8 @@ public sealed record FrameResult(
     IReadOnlyList<VehiclePassageEvent> Passages,
     TimeSpan DetectionTime,
     IReadOnlySet<int>? TrailerTrackIds = null,
-    bool DetectorRan = true);
+    bool DetectorRan = true,
+    IReadOnlyList<UncountedTrack>? Uncounted = null);
 
 /// <summary>
 /// Detection → tracking → counting for one camera. Geometry is derived from the first frame and re-derived if
@@ -116,7 +118,8 @@ public sealed class CountingPipeline(IObjectDetector detector, ITracker tracker,
 
         TrackingResult tracking = tracker.Update(detections, frame.Timestamp, lighting);
         passages.AddRange(Counted(_counter.Process(tracking)));
-        return new FrameResult(_band, _line, detections, tracking, passages, watch.Elapsed, _counter.TrailerTrackIds.ToHashSet());
+        return new FrameResult(
+            _band, _line, detections, tracking, passages, watch.Elapsed, _counter.TrailerTrackIds.ToHashSet(), Uncounted: [.. _counter.Uncounted]);
     }
 
     /// <summary>Emits passages still waiting for their track to end, e.g. on shutdown.</summary>

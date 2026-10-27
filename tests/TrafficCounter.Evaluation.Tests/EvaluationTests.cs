@@ -188,6 +188,30 @@ public sealed class EvaluationTests : IDisposable
     }
 
     [Fact]
+    public void Class_scores_and_macro_f1_weight_every_annotated_class_equally()
+    {
+        var result = new EvaluationResult(14, 14, 14, 0, 0, 0, new Dictionary<(VehicleClass, VehicleClass), int>
+        {
+            [(VehicleClass.Car, VehicleClass.Car)] = 9,
+            [(VehicleClass.Car, VehicleClass.Van)] = 1,
+            [(VehicleClass.Van, VehicleClass.Van)] = 1,
+            [(VehicleClass.Van, VehicleClass.Car)] = 1,
+            [(VehicleClass.Bicycle, VehicleClass.Unknown)] = 1,
+            [(VehicleClass.Unknown, VehicleClass.Car)] = 1,
+        });
+
+        IReadOnlyList<ClassScore> scores = result.ClassScores();
+
+        Assert.Equal([VehicleClass.Car, VehicleClass.Van, VehicleClass.Bicycle], scores.Select(s => s.Class));
+        Assert.Equal(new ClassScore(VehicleClass.Car, 10, 10, 9), scores[0]);
+        Assert.Equal(0.9, scores[0].F1, 6);
+        Assert.Equal(2.0 / 4, scores[1].F1, 6);
+        Assert.Equal(0, scores[2].F1);
+        Assert.Equal((0.9 + 0.5 + 0) / 3, result.MacroF1!.Value, 6);
+        Assert.Null(new EvaluationResult(0, 0, 0, 0, 0, 0, new Dictionary<(VehicleClass, VehicleClass), int>()).MacroF1);
+    }
+
+    [Fact]
     public void Missed_and_extra_passages_are_listed()
     {
         GroundTruthEntry scooter = new(S(30), ImageMotion.LeftToRight, VehicleClass.Bicycle, "e-scooter");
