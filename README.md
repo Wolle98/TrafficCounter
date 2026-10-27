@@ -3,6 +3,10 @@
 > [!IMPORTANT]
 > **A non-commercial hobby project, still in development.** It is provided as is, **without any warranty of any kind**, express or implied, including fitness for a particular purpose; use it at your own risk. There are and will be **no binary releases**: build it from source. Licensed under the [GNU Affero General Public License v3.0](LICENSE) (see [License](#license)).
 
+> [!NOTE]
+> This project is fully coded by AI using Claude Code, partially assisted by Google Antigravity.
+It is supervised by a human. This is an essential part of the project, that is not only about the traffic counting itself, but also about the capabilities of AI software engineering.
+
 https://github.com/user-attachments/assets/749ea3e8-d1fb-415d-b7ac-64dd975edc38
 
 <sub>Voice: ElevenLabs · Music: "Collaboration" by The_Mountain (Pixabay)</sub>
