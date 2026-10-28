@@ -37,7 +37,9 @@
 }
 else if (_heatmap is not null && _labels.Count > 0)
 {
-    <Heatmap Values="@_heatmap" RowLabels="@_labels" />
+    <DayMarkerList Markers="@_markers" ShowDates="true" />
+    <Heatmap Values="@_heatmap" RowLabels="@_labels" RowClasses="@_rowClasses" RowTitles="@_rowTitles" RowFootnotes="@_rowFootnotes" />
+    <NoteFootnotes Notes="@_notes" />
     <p class="hint">@L["Day.Hint"]</p>
 }
 else if (_heatmap is not null)
@@ -55,6 +57,11 @@ else if (_heatmap is not null)
     private string _filter = "all";
     private double?[,]? _heatmap;
     private List<string> _labels = [];
+    private List<DayMarker> _markers = [];
+    private List<DayMarker> _notes = [];
+    private List<string?> _rowClasses = [];
+    private List<string?> _rowTitles = [];
+    private List<IReadOnlyList<int>> _rowFootnotes = [];
     private string? _error;
 
     protected override async Task OnInitializedAsync()
@@ -99,11 +106,32 @@ else if (_heatmap is not null)
             }
 
             _labels = [.. rows.Select(r => L.Date(dates[r], "Format.DayPatternRow"))];
+            MarkRows([.. rows.Select(r => dates[r])], await Queries.DayMarkersAsync(from, to));
             _error = null;
         }
         catch (Exception ex)
         {
             _error = L["Common.DatabaseUnreachable", ex.Message];
+        }
+    }
+
+    /// <summary>
+    /// Holidays and notes of the shown dates (ADR-0051): the row name gets the holiday's colour and its name as tooltip,
+    /// notes a footnote number with the text below the heatmap.
+    /// </summary>
+    private void MarkRows(List<DateTime> dates, List<DayMarker> markers)
+    {
+        _markers = [.. markers.Where(m => dates.Any(d => m.Touches(d, d.AddDays(1))))];
+        _notes = [.. _markers.Where(m => m.Kind == DayMarkerKind.Note).OrderBy(m => m.Start)];
+        _rowClasses = [];
+        _rowTitles = [];
+        _rowFootnotes = [];
+        foreach (DateTime date in dates)
+        {
+            List<DayMarker> holidays = [.. _markers.Where(m => m.Kind != DayMarkerKind.Note && m.Touches(date, date.AddDays(1))).OrderBy(m => m.Kind)];
+            _rowClasses.Add(holidays.Count == 0 ? null : string.Join(' ', holidays.Select(m => m.Kind.ToString().ToLowerInvariant()).Distinct()));
+            _rowTitles.Add(holidays.Count == 0 ? null : string.Join(Environment.NewLine, holidays.Select(m => $"{L[$"Marker.{m.Kind}"]}: {m.Text}")));
+            _rowFootnotes.Add(NoteFootnotes.NumbersOf(_notes, date, date.AddDays(1)));
         }
     }
 }

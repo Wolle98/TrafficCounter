@@ -125,6 +125,40 @@ public sealed class EvaluationTests : IDisposable
     }
 
     [Fact]
+    public void A_small_van_counted_as_car_is_right_and_the_file_keeps_the_mark()
+    {
+        string path = Path.Combine(_directory, "small.gt.csv");
+        GroundTruthFile.Write(path, [new(S(10), ImageMotion.LeftToRight, VehicleClass.Van, SmallVan: true), new(S(20), ImageMotion.LeftToRight, VehicleClass.Van)]);
+        Assert.Contains(";SmallVan;", File.ReadAllText(path));
+        List<GroundTruthEntry> truth = GroundTruthFile.Read(path);
+        Assert.Equal([true, false], truth.Select(e => e.SmallVan));
+        Assert.All(truth, e => Assert.Equal(VehicleClass.Van, e.Class));
+
+        DetectedPassage[] detected = [new(S(10.2), TravelDirection.B, VehicleClass.Car), new(S(20.2), TravelDirection.B, VehicleClass.Car)];
+        EvaluationResult result = CountEvaluator.Evaluate(truth, Map, detected, Tolerance);
+
+        Assert.Equal(1, result.ToleratedSmallVans);
+        ClassScore van = result.ClassScores().Single(c => c.Class == VehicleClass.Van);
+        Assert.Equal((2, 1), (van.Truth, van.Correct)); // the large van counted as car stays an error
+    }
+
+    [Fact]
+    public void Long_vehicles_of_the_ground_truth_get_a_wider_tolerance()
+    {
+        GroundTruthEntry[] truth =
+        [
+            new(S(10), ImageMotion.LeftToRight, VehicleClass.Truck),
+            new(S(40), ImageMotion.LeftToRight, VehicleClass.Car),
+        ];
+        DetectedPassage[] detected = [new(S(13.8), TravelDirection.B, VehicleClass.Truck), new(S(43.8), TravelDirection.B, VehicleClass.Car)];
+
+        EvaluationResult result = CountEvaluator.Evaluate(truth, Map, detected, Tolerance);
+
+        Assert.Equal(1, result.Matched);
+        Assert.Equal(VehicleClass.Car, Assert.Single(result.MissedEntries).Class);
+    }
+
+    [Fact]
     public void Missed_spurious_and_wrong_direction_are_distinguished()
     {
         GroundTruthEntry[] truth =

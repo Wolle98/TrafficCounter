@@ -1,6 +1,6 @@
 # ADR-0005: Privacy – no image storage in normal operation
 
-- **Status:** accepted, point 3 extended by [ADR-0026](0026-targeted-collection-of-training-samples.md) (anonymised training samples) and [ADR-0032](0032-recordings-by-the-service.md) (reference recordings by the service)
+- **Status:** accepted, point 3 extended by [ADR-0026](0026-targeted-collection-of-training-samples.md) (anonymised training samples) and [ADR-0032](0032-recordings-by-the-service.md) (reference recordings by the service) and [ADR-0053](0053-speed-clips.md) (clips of conspicuous speeds)
 - **Date:** 2026-09-26
 - **Stage:** all
 

@@ -1,6 +1,6 @@
 # ADR-0018: Training data – public datasets plus own images, semi-automatic labelling
 
-- **Status:** accepted, extended by [ADR-0023](0023-weather-and-image-quality.md) (weather, backlight, image quality)
+- **Status:** accepted, extended by [ADR-0023](0023-weather-and-image-quality.md) (weather, backlight, image quality); step 2 (public datasets) not taken, see the addendum of 2026-10-28
 - **Date:** 2026-09-26
 - **Stage:** 3 (preparation from 1)
 
@@ -42,3 +42,8 @@ The licences are stated to the best of our knowledge and **must be checked again
 - With about 80 % less labelling effort compared with purely manual labelling, stage 3 is realistic.
 - Training happens locally on the RTX 3060 Ti (8 GB) with Python and Ultralytics. That is sufficient for YOLO-s/m at 640 px.
 - External datasets are documented with versions so that training runs are reproducible.
+
+## Addendum 2026-10-28: own images only
+
+Step 2 was not taken. The own models (`tc-v…`) are fine-tuned from the COCO weights (`yolo11s.pt`) directly on own images from the data collection mode and from hand counts ([ADR-0026](0026-targeted-collection-of-training-samples.md), labelling rules [ADR-0039](0039-labelling-rules.md)); with some 3,200 own images (`tc-v6p`), public data from other cameras was not needed. Without public datasets there is no `datasets/SOURCES.md` either; it becomes necessary again as soon as one is used. The evaluation follows point 5: images taken while a hand-counted recording of the IP camera ran stay out of the training; these recordings are the test set.
+

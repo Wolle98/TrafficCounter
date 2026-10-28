@@ -1,6 +1,6 @@
 # ADR-0048: E-scooters at walking pace on the sidewalk are not counted
 
-- **Status:** accepted
+- **Status:** accepted, extended by [ADR-0050](0050-slow-e-scooters-everywhere.md) (on the road too)
 - **Date:** 2026-10-26
 - **Stage:** 3
 - **Extends:** [ADR-0020](0020-local-traffic-situation.md) (sidewalk motorcycle rule, implementation note of 2026-10-15)

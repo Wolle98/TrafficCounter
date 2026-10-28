@@ -126,6 +126,21 @@ public sealed class SiteOptions
     public float SpeedMinSeconds { get; set; } = 0.25f;
 
     /// <summary>
+    /// A track standing this long, in seconds, starts its class votes and speed over when it moves off (ADR-0052);
+    /// 0 switches this off.
+    /// </summary>
+    public float StandingResetSeconds { get; set; } = 2f;
+
+    /// <summary>
+    /// How far beyond the line, as a fraction of the image width, a track that ends must have got to be counted
+    /// (machines rolling a little over the line); 0 counts any crossing.
+    /// </summary>
+    public float MinEndBeyondFraction { get; set; }
+
+    /// <summary>Decides the class with votes weighted by box width (cut-off boxes at the edge count less, ADR-0052).</summary>
+    public bool WeighVotesByWidth { get; set; } = true;
+
+    /// <summary>
     /// Site coordinates for the sun position (day/dusk/night, ADR-0017). One decimal (about 10 km) is enough;
     /// the precision is the operator's choice. Location data – private configuration only.
     /// </summary>
@@ -270,6 +285,9 @@ public sealed class SiteOptions
         SegmentMargin: SegmentMargin,
         EmitDistancePixels: EmitDistanceFraction * frame.Width,
         MinTrackFrames: MinTrackFrames,
+        StandingSeconds: StandingResetSeconds,
+        MinEndBeyondPixels: MinEndBeyondFraction * frame.Width,
+        WeighVotesByWidth: WeighVotesByWidth,
         Speed: FarKerbMetersPerImageWidth is float far && NearKerbMetersPerImageWidth is float near
             && FarKerb is float farKerb && NearKerb is float nearKerb
             ? new SpeedSettings(far / frame.Width, near / frame.Width, farKerb, nearKerb, ZonePixels: SpeedZoneFraction * frame.Width, MinSeconds: SpeedMinSeconds)

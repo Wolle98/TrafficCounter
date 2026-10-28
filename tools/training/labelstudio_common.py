@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 # Label values in Label Studio, in the order of the YOLO class ids of the own model. Must match label-config.xml.
-# EScooter is labelled apart from Bicycle (easier to learn); the counting adds both up as bicycle/e-scooter.
+# EScooter is labelled apart from Bicycle (easier to learn) and counted as a class of its own (ADR-0054).
 CLASSES = ["Car", "Van", "Truck", "Bus", "Motorcycle", "Bicycle", "Agricultural", "Trailer", "EScooter"]
 
 

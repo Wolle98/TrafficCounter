@@ -1,6 +1,6 @@
 # ADR-0004: License AGPL-3.0
 
-- **Status:** accepted
+- **Status:** accepted, extended by [ADR-0044](0044-license-exception-proprietary-runtimes.md) (permission for proprietary runtime libraries)
 - **Date:** 2026-09-26
 - **Stage:** 0
 

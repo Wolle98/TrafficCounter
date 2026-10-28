@@ -101,6 +101,9 @@ public sealed class ServiceOptions
     /// <summary>Reference recordings by the service (ADR-0005 no. 3); off unless enabled explicitly.</summary>
     public RecordingOptions Recording { get; set; } = new();
 
+    /// <summary>Short videos of passages with a conspicuous speed (ADR-0053); off unless enabled explicitly.</summary>
+    public SpeedClipOptions SpeedClips { get; set; } = new();
+
     /// <summary>Collection of anonymised training samples (ADR-0026); off unless an end date is set.</summary>
     public SampleCollectionOptions SampleCollection { get; set; } = new();
 

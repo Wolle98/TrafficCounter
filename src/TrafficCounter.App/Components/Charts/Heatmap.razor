@@ -1,4 +1,5 @@
-@* Weekday × hour heatmap as an HTML table; colour (HeatScale) relative to the largest value, with a scale legend. *@
+@* Weekday × hour heatmap as an HTML table; colour (HeatScale) relative to the largest value, with a scale legend.
+   Rows can be marked (holidays: a class and tooltip on the row name) and carry footnote numbers (notes). *@
 @using System.Globalization
 
 <div class="heatmap-wrap">
@@ -17,7 +18,13 @@
             {
                 int day = d;
                 <tr>
-                    <th>@RowLabels[day]</th>
+                    <th class="@RowClasses?.ElementAtOrDefault(day)" title="@RowTitles?.ElementAtOrDefault(day)">
+                        @RowLabels[day]
+                        @foreach (int number in RowFootnotes?.ElementAtOrDefault(day) ?? [])
+                        {
+                            <a class="footnote-ref" href="#note-@number">@number</a>
+                        }
+                    </th>
                     @for (int h = 0; h < Values.GetLength(1); h++)
                     {
                         double? value = Values[day, h];
@@ -47,6 +54,15 @@
 
     /// <summary>Row names, by default the weekdays from Monday in the current language.</summary>
     [Parameter] public IReadOnlyList<string> RowLabels { get; set; } = LocalizerExtensions.WeekdaysFromMonday();
+
+    /// <summary>Optional CSS classes of the row names, e.g. "publicholiday".</summary>
+    [Parameter] public IReadOnlyList<string?>? RowClasses { get; set; }
+
+    /// <summary>Optional tooltips of the row names.</summary>
+    [Parameter] public IReadOnlyList<string?>? RowTitles { get; set; }
+
+    /// <summary>Optional footnote numbers per row, linking to "#note-n".</summary>
+    [Parameter] public IReadOnlyList<IReadOnlyList<int>>? RowFootnotes { get; set; }
 
     private double Max => Values.Cast<double?>().Where(v => v is not null).Select(v => v!.Value).DefaultIfEmpty(1).Max();
 }

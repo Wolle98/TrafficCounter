@@ -1,6 +1,6 @@
 # ADR-0020: Local traffic situation – parking, evading, waiting, occlusion, cyclists on footpaths
 
-- **Status:** accepted, extended by [ADR-0023](0023-weather-and-image-quality.md) (weather, backlight, image quality)
+- **Status:** accepted, extended by [ADR-0023](0023-weather-and-image-quality.md) (weather, backlight, image quality), [ADR-0048](0048-slow-e-scooters-on-the-sidewalk.md) (slow e-scooters on the sidewalk) and [ADR-0052](0052-standing-vehicles-and-stops.md) (standing vehicles start over)
 - **Date:** 2026-09-26
 - **Stage:** 1, 2, 5
 - **Extends:** [ADR-0006](0006-object-detection-yolo-onnx.md), [ADR-0008](0008-tracking-bytetrack.md), [ADR-0009](0009-counting-line.md)

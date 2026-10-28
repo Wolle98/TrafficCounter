@@ -189,7 +189,7 @@ dotnet run --project src/TrafficCounter.Sync -- sync --direction to-postgres
 
 **Filling a gap with a second camera:** `TrafficCounter.Sync sync --direction to-postgres --from <time> --to <time>` copies only the rows in that range (passages, minutes, events, drift measurements) and only the operating periods overlapping it. With `TRAFFICCOUNTER_DB` pointing to the database of a second counter, e.g. a camera that counted the same street meanwhile, it fills an outage of the counting machine. Never copy the rest of that database afterwards: the overlapping times would count twice.
 
-**Correcting single passages** found wrong on review: `TrafficCounter.Sync delete-passages --sync-ids <id>,...` (e.g. a pram counted as a motorcycle), `set-class --sync-ids <id> --class Bicycle` (wrong class) and `add-alongside --sync-id <id> [--class Bicycle]` (a second vehicle the counter merged into this passage). They change both databases, because the sync only copies missing rows; `--dry-run true` shows what would change.
+**Correcting single passages** found wrong on review: `TrafficCounter.Sync delete-passages --sync-ids <id>,...` (e.g. a pram counted as a motorcycle), `set-class --sync-ids <id> --class Bicycle` (wrong class) and `add-alongside --sync-id <id> [--class Bicycle]` (a second vehicle the counter merged into this passage). They change both databases, because the sync only copies missing rows; `--dry-run true` shows what would change. `clear-speeds --below 3 [--from <time>] [--to <time>]` removes stored speeds below a limit and keeps the passages, for speeds that contain a stop in the measuring area (ADR-0052).
 
 **Marking a period as not measured**, e.g. while a camera delivered only black frames before the watchdog existed: `TrafficCounter.Sync mark-unmeasured --from <time> --to <time> [--dry-run true]`. It sets the minutes to "source unavailable" in both databases, so the analysis treats them as a gap instead of as measured time without traffic.
 
@@ -257,7 +257,7 @@ Notes explain unusual traffic, e.g. a building site that narrows the road. Publi
 - **Catching up:** `TrafficCounter.Sync holidays [--provider PostgreSql] [--subdivision DE-BE] [--from-year 2026] [--to-year 2027]`.
 - **Notes:** page "Notes" of the analysis app, or `TrafficCounter.Sync add-note --from 2026-10-27 --to 2026-10-31 --text "…"` (a day without a time is the whole day), `list-notes`, `delete-note --id <sync id>`.
 - **Synchronisation:** `sync` copies holidays and notes; a deleted note is passed on as deleted.
-- **Analysis app:** shows them on the overview and on the "Period" page (list and per day).
+- **Analysis app:** shows them on the overview and on the "Period" page: as a list above the chart, as coloured strips between the bars and the dates (public holidays orange, school holidays green, in stronger shades of the label colours), and per row of the table, where holidays are named one per line and notes get a footnote number with their text below the table. The "Day pattern" marks the dates the same way: the date of a holiday has its colour (name as tooltip), a note gets a footnote number.
 
 ## Reference recordings during operation ([ADR-0032](adr/0032-recordings-by-the-service.md))
 
@@ -293,6 +293,26 @@ The time slots are in `schedule.json` in the recording folder. The service reads
 - The service runs as "Local System" and does not find an ffmpeg installed via WinGet by itself, hence `FfmpegPath`.
 - The recorder takes the frames straight from the camera's capture thread, not from the counting loop. A slow detector run therefore no longer leaves gaps in the video; the video has the camera's full frame rate, even where the counting skipped frames.
 - While a recording is running, the log contains a warning with `RECORDING`.
+
+### Clips of conspicuous speeds ([ADR-0053](adr/0053-speed-clips.md))
+
+To check implausible speeds on video, the service can write a short clip of every passage whose speed matches a rule. It is enabled for a limited time, like the other recording modes:
+
+```json
+"SpeedClips": {
+  "Until": "2026-11-27T00:00:00+01:00",
+  "Rules": [
+    { "MinKmh": 45, "BelowKmh": 55, "ExceptClasses": [ "Car" ] },
+    { "MinKmh": 55 }
+  ]
+}
+```
+
+- `Until` may lie at most 30 days ahead; without it, or without rules, no clips are made.
+- A rule matches from `MinKmh` (inclusive) up to `BelowKmh` (exclusive, optional), for all classes except `ExceptClasses`.
+- A clip covers `SecondsBefore` (4) to `SecondsAfter` (3) seconds around the crossing, at the processing frame rate and in the band of `Recording`. At most `DailyLimit` (50) clips a day.
+- The clips go to the folder `speed` in the recording folder (`SpeedClips:Directory` overrides it), named `yyyyMMdd-HHmmss-<class>-<speed>kmh.mp4`, with `.frames.csv`, `.site.json` and a `.json` that contains the passage. They are converted to H.264 with the settings of `Recording`.
+- `.\tools\deploy\Get-SpeedClips.ps1 -ComputerName <host>` copies new clips into `recordings\speed` of the private repository. Open them with the Annotator; the passage's `OffsetSeconds` in the `.json` is where it crosses the line.
 
 ## Collecting training samples ([ADR-0026](adr/0026-targeted-collection-of-training-samples.md))
 

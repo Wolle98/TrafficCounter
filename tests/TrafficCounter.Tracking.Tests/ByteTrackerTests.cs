@@ -286,6 +286,43 @@ public class ByteTrackerTests
     }
 
     [Fact]
+    public void Bicycle_hidden_and_seen_again_as_e_scooter_keeps_its_id()
+    {
+        // The detector wavers between bicycle and e-scooter; both are two-wheelers and may be stitched.
+        var run = new Run();
+        for (int i = 0; i < 25; i++)
+        {
+            run.Step(i, new Detection(new BoundingBox(100 + (8 * i), 620, 80, 80), VehicleClass.Bicycle, 0.8f));
+        }
+
+        for (int i = 25; i < 35; i++)
+        {
+            run.Step(i);
+        }
+
+        // It slowed down while hidden, so it reappears well behind the predicted position.
+        for (int i = 35; i < 45; i++)
+        {
+            run.Step(i, new Detection(new BoundingBox(312 + (2 * (i - 35)), 620, 80, 80), VehicleClass.EScooter, 0.8f));
+        }
+
+        Assert.Single(run.AllActiveIds);
+    }
+
+    [Fact]
+    public void Two_wheeler_thresholds_apply_to_e_scooters()
+    {
+        var tracker = new ByteTracker(new TrackerSettings { TwoWheelerHighConfidence = 0.3f, TwoWheelerNewTrackConfidence = 0.35f });
+        TrackingResult result = default!;
+        for (int i = 0; i < 5; i++)
+        {
+            result = tracker.Update([new Detection(new BoundingBox(100 + (8 * i), 620, 80, 80), VehicleClass.EScooter, 0.4f)], Frame(i));
+        }
+
+        Assert.Single(result.Active);
+    }
+
+    [Fact]
     public void Removed_ids_are_reported_exactly_once()
     {
         var run = new Run();

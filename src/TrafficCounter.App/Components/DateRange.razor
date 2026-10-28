@@ -47,7 +47,9 @@
         yield return ("Range.Today", today, today);
         yield return ("Range.Yesterday", today.AddDays(-1), today.AddDays(-1));
         yield return ("Range.ThisWeek", monday, today);
+        yield return ("Range.LastWeek", monday.AddDays(-7), monday.AddDays(-1));
         yield return ("Range.Last7", today.AddDays(-6), today);
+        yield return ("Range.Last14", today.AddDays(-13), today);
         yield return ("Range.ThisMonth", new DateTime(today.Year, today.Month, 1), today);
         yield return ("Range.Last30", today.AddDays(-29), today);
         yield return ("Range.ThisYear", new DateTime(today.Year, 1, 1), today);

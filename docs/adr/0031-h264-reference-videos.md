@@ -1,6 +1,6 @@
 # ADR-0031: Convert reference videos to H.264 with ffmpeg afterwards
 
-- **Status:** accepted
+- **Status:** accepted; for recordings by the service extended by [ADR-0032](0032-recordings-by-the-service.md) (written as H.264 by the hardware encoder right away)
 - **Date:** 2026-10-05
 - **Stage:** 1
 

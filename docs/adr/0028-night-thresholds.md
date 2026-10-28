@@ -1,6 +1,6 @@
 # ADR-0028: Separate confidence thresholds for the night
 
-- **Status:** accepted
+- **Status:** accepted, extended by [ADR-0049](0049-night-thresholds-at-dusk.md) (also at dusk)
 - **Date:** 2026-09-30
 - **Stage:** 1
 

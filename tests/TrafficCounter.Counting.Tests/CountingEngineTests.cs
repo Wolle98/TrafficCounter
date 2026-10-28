@@ -43,6 +43,85 @@ public class CountingEngineTests
         }
     }
 
+    [Theory]
+    [InlineData(2f, VehicleClass.Van)]
+    [InlineData(0f, VehicleClass.Car)]
+    public void A_vehicle_taking_over_the_track_of_a_parked_one_does_not_inherit_its_votes(float standingSeconds, VehicleClass expected)
+    {
+        // A parked car is tracked for 8 s; then a van drives past it, the tracker hands the track over, and the van
+        // crosses the line within 1 s. Without the reset the parked car's votes win (ADR-0052).
+        var engine = new CountingEngine(new CountingSettings(Line, HysteresisPixels: 8, EmitDistancePixels: 10_000, EmitDelaySeconds: 0, StandingSeconds: standingSeconds));
+        List<VehiclePassageEvent> events = [];
+        int frame = 0;
+        for (int i = 0; i < 200; i++)
+        {
+            events.AddRange(engine.Process(new TrackingResult(T0 + (FrameInterval * frame++), [Obj(1, 900 + (i % 2))], [])));
+        }
+
+        foreach (float x in Range(860, 300, -25))
+        {
+            events.AddRange(engine.Process(new TrackingResult(T0 + (FrameInterval * frame++), [Obj(1, x, cls: VehicleClass.Van)], [])));
+        }
+
+        events.AddRange(engine.Process(new TrackingResult(T0 + (FrameInterval * frame), [], [1])));
+        Assert.Equal(expected, Assert.Single(events).Class);
+    }
+
+    [Fact]
+    public void A_vehicle_moving_on_slowly_keeps_its_votes()
+    {
+        // Creeping at 1 px per frame never stays 2 s within the radius (a quarter of the 50 px box height).
+        var engine = new CountingEngine(new CountingSettings(Line, HysteresisPixels: 8, EmitDistancePixels: 10_000, EmitDelaySeconds: 0));
+        List<VehiclePassageEvent> events = [];
+        int frame = 0;
+        foreach (float x in Range(600, 400, -1))
+        {
+            VehicleClass cls = x > 500 ? VehicleClass.Van : VehicleClass.Car;
+            events.AddRange(engine.Process(new TrackingResult(T0 + (FrameInterval * frame++), [Obj(1, x, cls: cls, conf: x > 500 ? 0.9f : 0.8f)], [])));
+        }
+
+        events.AddRange(engine.Process(new TrackingResult(T0 + (FrameInterval * frame), [], [1])));
+        Assert.Equal(VehicleClass.Van, Assert.Single(events).Class);
+    }
+
+    [Theory]
+    [InlineData(0f, 1)]
+    [InlineData(30f, 0)]
+    public void A_machine_rolling_a_little_over_the_line_is_counted_only_without_a_minimum(float minEndBeyond, int expected)
+    {
+        // From 41 px before the line to 13 px behind it, then the track ends (an excavator leaving a building site).
+        var engine = new CountingEngine(new CountingSettings(Line, HysteresisPixels: 8, EmitDistancePixels: 10_000, EmitDelaySeconds: 0, MinEndBeyondPixels: minEndBeyond));
+        List<VehiclePassageEvent> events = Drive(engine, 1, Range(541, 487, -2));
+
+        Assert.Equal(expected, events.Count);
+        if (expected == 0)
+        {
+            Assert.Equal(UncountedReason.EndedAtLine, Assert.Single(engine.Uncounted).Reason);
+        }
+    }
+
+    [Theory]
+    [InlineData(false, VehicleClass.Car)]
+    [InlineData(true, VehicleClass.Van)]
+    public void Votes_weighted_by_width_favour_the_full_side_view(bool weighByWidth, VehicleClass expected)
+    {
+        // Cut off at the image edge (30 px wide) the van looks like a car for 12 frames; in full view (80 px) it
+        // is a van for 8 frames.
+        var engine = new CountingEngine(new CountingSettings(Line, HysteresisPixels: 8, EmitDistancePixels: 10_000, EmitDelaySeconds: 0, WeighVotesByWidth: weighByWidth));
+        List<VehiclePassageEvent> events = [];
+        int frame = 0;
+        foreach (float x in Range(900, 300, -30))
+        {
+            bool full = x is <= 620 and >= 410;
+            var box = new BoundingBox(x - 40, 250, full ? 80 : 30, 50);
+            events.AddRange(engine.Process(new TrackingResult(T0 + (FrameInterval * frame++),
+                [new TrackedObject(1, box, full ? VehicleClass.Van : VehicleClass.Car, 0.9f)], [])));
+        }
+
+        events.AddRange(engine.Process(new TrackingResult(T0 + (FrameInterval * frame), [], [1])));
+        Assert.Equal(expected, Assert.Single(events).Class);
+    }
+
     [Fact]
     public void Passages_are_pending_from_near_the_line_until_emitted()
     {

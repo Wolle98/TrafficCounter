@@ -214,6 +214,12 @@
   <data name="Range.ThisWeek" xml:space="preserve">
     <value>this week</value>
   </data>
+  <data name="Range.LastWeek" xml:space="preserve">
+    <value>last week</value>
+  </data>
+  <data name="Range.Last14" xml:space="preserve">
+    <value>last 14 days</value>
+  </data>
   <data name="Range.Last7" xml:space="preserve">
     <value>last 7 days</value>
   </data>
@@ -326,7 +332,7 @@
     <value>Vehicles in the period</value>
   </data>
   <data name="Period.DaysOnly" xml:space="preserve">
-    <value>For more than 14 days the grid is days.</value>
+    <value>The period covers {0} days; by hours at most {1} days can be shown. It is therefore shown by days.</value>
   </data>
   <data name="Period.RainChart" xml:space="preserve">
     <value>Precipitation</value>

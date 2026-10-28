@@ -1,6 +1,6 @@
 # ADR-0009: Counting via a virtual counting line, direction from the crossing direction
 
-- **Status:** accepted, extended by [ADR-0020](0020-local-traffic-situation.md) (emit rule by distance instead of time, line across the footpaths)
+- **Status:** accepted, extended by [ADR-0020](0020-local-traffic-situation.md) (emit rule by distance instead of time, line across the footpaths) and [ADR-0046](0046-two-wheelers-and-split-tracks.md) (one vehicle split into two tracks)
 - **Date:** 2026-09-26
 - **Stage:** 1, 2
 

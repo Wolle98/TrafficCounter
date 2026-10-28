@@ -1,6 +1,6 @@
 # ADR-0030: PostgreSQL on the NAS and synchronisation with SQL Server
 
-- **Status:** accepted
+- **Status:** accepted, extended by [ADR-0051](0051-day-notes-and-holidays.md) (holidays and notes are synchronised)
 - **Date:** 2026-09-30
 - **Stage:** 1, 4
 

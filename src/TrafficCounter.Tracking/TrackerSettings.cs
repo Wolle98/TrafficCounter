@@ -25,13 +25,13 @@ public sealed record TrackerSettings
     public bool NightThresholdsAtDusk { get; init; } = true;
 
     /// <summary>
-    /// Optional lower <see cref="HighConfidence"/> for bicycles and motorcycles: the COCO model sees cyclists and
-    /// e-scooters from the side often with only 0.3–0.5. Null: same as for all classes.
+    /// Lower <see cref="HighConfidence"/> for bicycles, e-scooters and motorcycles: models see cyclists and e-scooters
+    /// from the side often with only 0.3–0.5 (ADR-0052). Null: same as for all classes.
     /// </summary>
-    public float? TwoWheelerHighConfidence { get; init; }
+    public float? TwoWheelerHighConfidence { get; init; } = 0.3f;
 
-    /// <summary>Optional lower <see cref="NewTrackConfidence"/> for bicycles and motorcycles; null: same as for all.</summary>
-    public float? TwoWheelerNewTrackConfidence { get; init; }
+    /// <summary>Lower <see cref="NewTrackConfidence"/> for bicycles, e-scooters and motorcycles; null: same as for all.</summary>
+    public float? TwoWheelerNewTrackConfidence { get; init; } = 0.35f;
 
     /// <summary>Maximum 1 - IoU for the first association (high detections vs. confirmed tracks).</summary>
     public double FirstMatchMaxCost { get; init; } = 0.8;

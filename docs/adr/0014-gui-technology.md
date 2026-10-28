@@ -1,6 +1,6 @@
 # ADR-0014: Technology of the analysis GUI
 
-- **Status:** accepted
+- **Status:** accepted, extended by [ADR-0037](0037-multilingual-analysis-app.md) (multilingual) and [ADR-0051](0051-day-notes-and-holidays.md) (notes on days; the app is no longer read-only)
 - **Date:** 2026-09-26, decided 2026-10-06
 - **Stage:** 4
 

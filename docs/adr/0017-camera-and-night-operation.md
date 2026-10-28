@@ -1,6 +1,6 @@
 # ADR-0017: Camera and night operation – start with a USB webcam, night test as decision point
 
-- **Status:** accepted, extended by [ADR-0023](0023-weather-and-image-quality.md) (weather, backlight, image quality)
+- **Status:** accepted, extended by [ADR-0023](0023-weather-and-image-quality.md) (weather, backlight, image quality); switch path taken, see the addendum of 2026-10-28
 - **Date:** 2026-09-26
 - **Stage:** 0, 1 (effects up to 5)
 
@@ -60,3 +60,8 @@ Options checked (as of 2026-09):
 - The counting PC must be near the window: USB up to 5 m, beyond that an active extension. A later IP camera removes this constraint.
 - The 70° field of view shows about 13–17 m of street. Articulated lorries do not fit completely into the image; for counting this is not critical, classification becomes somewhat harder.
 - Night suitability is a deliberately accepted risk. The night test is therefore at the very beginning of stage 1.
+
+## Addendum 2026-10-28: switch path taken
+
+Since 2026-10-09 the counter runs with an IP camera, an Annke NC400, via RTSP ([ADR-0011](0011-frame-source-abstraction.md), roadmap 1.13). It meets the requirements of point 4, gets its power from a PoE injector and switches its day and night scenes itself ([ADR-0042](0042-camera-scene-times.md)). The UGREEN webcam keeps counting on the PC as a second camera for comparisons, into a database of its own. The night test of point 3 thus decided against the webcam as the only camera.
+

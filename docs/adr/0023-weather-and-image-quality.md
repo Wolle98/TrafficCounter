@@ -1,6 +1,6 @@
 # ADR-0023: Weather, backlight and image quality – measures, monitoring, weather data
 
-- **Status:** accepted, extended by [ADR-0024](0024-operations-log-and-logging.md) (minute statistics)
+- **Status:** accepted, extended by [ADR-0024](0024-operations-log-and-logging.md) (minute statistics) and [ADR-0051](0051-day-notes-and-holidays.md) (holiday import)
 - **Date:** 2026-09-26
 - **Stage:** 1 (monitoring), 3 (training data), 4 (weather data)
 - **Extends:** [ADR-0017](0017-camera-and-night-operation.md), [ADR-0018](0018-training-data.md), [ADR-0020](0020-local-traffic-situation.md)

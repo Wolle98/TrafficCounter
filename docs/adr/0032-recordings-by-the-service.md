@@ -1,6 +1,6 @@
 # ADR-0032: Reference recordings by the running service
 
-- **Status:** accepted
+- **Status:** accepted, extended by [ADR-0053](0053-speed-clips.md) (clips of conspicuous speeds)
 - **Date:** 2026-10-06
 - **Stage:** 1, 3
 

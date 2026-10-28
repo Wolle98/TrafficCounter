@@ -34,6 +34,24 @@ namespace TrafficCounter.Counting;
 /// lane cannot be that close: at 30 km/h, 0.4 s are 3.3 m. Two-wheelers are exempt, they ride side by side.
 /// </param>
 /// <param name="DuplicateLineTolerance">Difference in position along the line (0..1) that still counts as one lane.</param>
+/// <param name="StandingSeconds">
+/// A track that stayed this long within <paramref name="StandingRadiusRatio"/> of one point was standing; when it moves
+/// off, its class votes, first position and speed samples start over (ADR-0052). Otherwise a vehicle driving past a
+/// parked one takes over its track together with minutes of votes for the parked vehicle's class, and a vehicle
+/// that waited gets the waiting time in its speed. Only before the crossing: what a track did up to the line stays
+/// with it, or a pedestrian pausing behind the line would lose the speed that shows it is no vehicle. 0 switches
+/// this off.
+/// </param>
+/// <param name="StandingRadiusRatio">Radius around the point, in box heights (so it fits near and far lanes).</param>
+/// <param name="WeighVotesByWidth">
+/// The class of a counted track is decided with each frame's vote weighted by its box width relative to the widest
+/// box of the track: boxes cut off at the image edge or seen at a slant count less than the full side view
+/// (ADR-0052). false: every frame counts the same.
+/// </param>
+/// <param name="MinEndBeyondPixels">
+/// A track that ends shortly after crossing is only counted if it got at least this far beyond the line; it keeps
+/// machines rolling a little over the line at a building site from being counted. 0: any crossing counts.
+/// </param>
 public sealed record CountingSettings(
     LineSegment Line,
     float HysteresisPixels = 8f,
@@ -44,7 +62,11 @@ public sealed record CountingSettings(
     TrailerSettings? Trailers = null,
     SpeedSettings? Speed = null,
     float DuplicateSeconds = 0.4f,
-    float DuplicateLineTolerance = 0.08f);
+    float DuplicateLineTolerance = 0.08f,
+    float StandingSeconds = 2f,
+    float StandingRadiusRatio = 0.25f,
+    float MinEndBeyondPixels = 0f,
+    bool WeighVotesByWidth = true);
 
 /// <summary>
 /// Speed from the ground point (box bottom center) of a track near the counting line (ADR-0015): a line is fitted
@@ -60,6 +82,12 @@ public sealed record CountingSettings(
 /// <param name="ZonePixels">Only positions at most this far from the line are used (the view is least oblique there).</param>
 /// <param name="MinSamples">Fewer positions in the zone give no speed.</param>
 /// <param name="MinSeconds">Shorter observation in the zone gives no speed.</param>
+/// <param name="StopSeconds">
+/// A vehicle that moved less than <paramref name="StopMetersPerSecond"/> over this long a stretch of its time in the
+/// zone stopped there: the drive was not free (ADR-0020), and a fit through the stop would give neither the speed at
+/// the line nor the speed of the drive, so it gets no speed (ADR-0052).
+/// </param>
+/// <param name="StopMetersPerSecond">Mean speed below which such a stretch counts as a stop (1 m/s = 3.6 km/h).</param>
 public sealed record SpeedSettings(
     float FarMetersPerPixel,
     float NearMetersPerPixel,
@@ -67,7 +95,9 @@ public sealed record SpeedSettings(
     float NearPosition,
     float ZonePixels = 400f,
     int MinSamples = 5,
-    float MinSeconds = 0.4f)
+    float MinSeconds = 0.4f,
+    float StopSeconds = 1f,
+    float StopMetersPerSecond = 1f)
 {
     /// <summary>Scale at a position along the counting line, linear between the kerbs (and beyond, for sidewalks).</summary>
     /// <remarks>
@@ -87,10 +117,20 @@ public sealed record SpeedSettings(
     }
 
     /// <summary>
-    /// Speed in km/h from positions (seconds, horizontal pixel, position along the line), or null with too few.
-    /// Least-squares slope of the pixel position over time, times the scale at the median lane position.
+    /// Speed in km/h from positions (seconds, horizontal pixel, position along the line), or null with too few or
+    /// after a stop in the zone. Least-squares slope of the pixel position over time, times the scale at the median
+    /// lane position.
     /// </summary>
-    public float? Estimate(IReadOnlyList<(double Seconds, float X, float LinePosition)> samples)
+    public float? Estimate(IReadOnlyList<(double Seconds, float X, float LinePosition)> samples) =>
+        Fit(samples) is (float kmh, double metersPerPixel) && !StoppedIn(samples, metersPerPixel) ? kmh : null;
+
+    /// <summary>
+    /// The same fit without the stop rule: the mean speed over the zone including stops. Not a driving speed, but
+    /// enough to tell a pedestrian from a vehicle (ADR-0050).
+    /// </summary>
+    public float? MeanSpeed(IReadOnlyList<(double Seconds, float X, float LinePosition)> samples) => Fit(samples)?.Kmh;
+
+    private (float Kmh, double MetersPerPixel)? Fit(IReadOnlyList<(double Seconds, float X, float LinePosition)> samples)
     {
         if (samples.Count < MinSamples || samples[^1].Seconds - samples[0].Seconds < MinSeconds)
         {
@@ -107,8 +147,35 @@ public sealed record SpeedSettings(
         }
 
         List<float> positions = [.. samples.Select(s => s.LinePosition).Order()];
-        double metersPerSecond = Math.Abs(covariance / variance) * MetersPerPixelAt(positions[positions.Count / 2]);
-        return (float)(metersPerSecond * 3.6);
+        double metersPerPixel = MetersPerPixelAt(positions[positions.Count / 2]);
+        double metersPerSecond = Math.Abs(covariance / variance) * metersPerPixel;
+        return ((float)(metersPerSecond * 3.6), metersPerPixel);
+    }
+
+    /// <summary>True if some stretch of at least <see cref="StopSeconds"/> was driven slower than <see cref="StopMetersPerSecond"/>.</summary>
+    private bool StoppedIn(IReadOnlyList<(double Seconds, float X, float LinePosition)> samples, double metersPerPixel)
+    {
+        int end = 0;
+        for (int start = 0; start < samples.Count; start++)
+        {
+            while (end < samples.Count && samples[end].Seconds - samples[start].Seconds < StopSeconds)
+            {
+                end++;
+            }
+
+            if (end == samples.Count)
+            {
+                return false;
+            }
+
+            double seconds = samples[end].Seconds - samples[start].Seconds;
+            if (Math.Abs(samples[end].X - samples[start].X) * metersPerPixel / seconds < StopMetersPerSecond)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

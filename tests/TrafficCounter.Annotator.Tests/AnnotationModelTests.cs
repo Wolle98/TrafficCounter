@@ -28,6 +28,38 @@ public sealed class AnnotationModelTests : IDisposable
     }
 
     [Fact]
+    public void A_mark_without_class_is_only_written_once_it_has_a_class()
+    {
+        var model = new AnnotationModel(Video);
+        model.Add(At(1));
+        model.Add(At(2, vehicleClass: null));
+
+        Assert.Single(new AnnotationModel(Video).Entries);
+
+        model.SetClass(VehicleClass.Truck);
+
+        Assert.Equal(VehicleClass.Truck, new AnnotationModel(Video).Entries[1].Class);
+    }
+
+    [Fact]
+    public void Small_vans_are_marked_found_with_the_vans_and_unmarked_by_another_class()
+    {
+        var model = new AnnotationModel(Video);
+        model.Add(At(1, vehicleClass: VehicleClass.Van));
+        model.Add(At(5));
+        model.Add(At(9, vehicleClass: VehicleClass.Van));
+
+        model.SelectedIndex = 0;
+        model.SetClass(VehicleClass.Van, smallVan: true);
+        Assert.True(new AnnotationModel(Video).Entries[0].SmallVan);
+        Assert.Equal(2, model.FindVan(TimeSpan.FromSeconds(2), forward: true));
+
+        model.SelectedIndex = 0;
+        model.SetClass(VehicleClass.Car, smallVan: true);
+        Assert.False(new AnnotationModel(Video).Entries[0].SmallVan);
+    }
+
+    [Fact]
     public void Speed_is_stored_in_the_ground_truth_and_checked()
     {
         var model = new AnnotationModel(Video);

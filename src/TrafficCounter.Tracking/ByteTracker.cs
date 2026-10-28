@@ -177,7 +177,8 @@ public sealed class ByteTracker(TrackerSettings? settings = null) : ITracker
         _tracks.RemoveAll(t => t.State == TrackState.Removed);
     }
 
-    private static bool IsTwoWheeler(VehicleClass vehicleClass) => vehicleClass is VehicleClass.Bicycle or VehicleClass.Motorcycle;
+    private static bool IsTwoWheeler(VehicleClass vehicleClass) =>
+        vehicleClass is VehicleClass.Bicycle or VehicleClass.EScooter or VehicleClass.Motorcycle;
 
     private static (List<Detection> Unmatched, List<Track> UnmatchedTracks) Associate(
         List<Detection> detections,

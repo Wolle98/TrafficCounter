@@ -437,7 +437,7 @@ namespace TrafficCounter.Data.Migrations.Postgres
                         new
                         {
                             Id = (byte)6,
-                            Name = "Fahrrad/E-Scooter"
+                            Name = "Fahrrad"
                         },
                         new
                         {

@@ -165,14 +165,16 @@ internal sealed class MainWindow : Window
         // Right: class and direction quick buttons, undo, delete.
         var right = new StackPanel { Width = 190, Spacing = 4, Margin = new Thickness(8, 0, 0, 0) };
         right.Children.Add(Heading("Class and direction"));
-        foreach (VehicleClass vehicleClass in ClassColors.QuickClasses)
+        // Small vans get a row of their own below the vans (ADR-0055).
+        foreach ((VehicleClass vehicleClass, bool smallVan) in ClassColors.QuickClasses
+            .SelectMany(c => c == VehicleClass.Van ? new[] { (c, false), (c, true) } : [(c, false)]))
         {
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("34,*,34") };
-            Button leftButton = Btn("←", () => AddEntry(ImageMotion.RightToLeft, vehicleClass, askSpeed: true));
-            Button rightButton = Btn("→", () => AddEntry(ImageMotion.LeftToRight, vehicleClass, askSpeed: true));
+            Button leftButton = Btn("←", () => AddEntry(ImageMotion.RightToLeft, vehicleClass, askSpeed: true, smallVan));
+            Button rightButton = Btn("→", () => AddEntry(ImageMotion.LeftToRight, vehicleClass, askSpeed: true, smallVan));
             var name = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             name.Children.Add(new Ellipse { Width = 10, Height = 10, Fill = ClassColors.BrushOf(vehicleClass), VerticalAlignment = VerticalAlignment.Center });
-            name.Children.Add(Localize(new TextBlock { VerticalAlignment = VerticalAlignment.Center }, t => t.Text = ClassName(vehicleClass)));
+            name.Children.Add(Localize(new TextBlock { VerticalAlignment = VerticalAlignment.Center }, t => t.Text = smallVan ? Localizer.T(SmallVanName) : ClassName(vehicleClass)));
             Grid.SetColumn(name, 1);
             Grid.SetColumn(rightButton, 2);
             leftButton.BorderBrush = rightButton.BorderBrush = ClassColors.BrushOf(vehicleClass);
@@ -325,6 +327,10 @@ internal sealed class MainWindow : Window
     }
 
     private static string ClassName(VehicleClass? vehicleClass) => Localizer.T(ClassColors.NameOf(vehicleClass));
+
+    private const string SmallVanName = "Small van";
+
+    private static string EntryName(GroundTruthEntry entry) => entry.SmallVan ? Localizer.T(SmallVanName) : ClassName(entry.Class);
 
     private void ChangeLanguage()
     {
@@ -575,14 +581,14 @@ internal sealed class MainWindow : Window
     /// Marks a crossing at the current frame. With a class (Num4/Num6, quick buttons) the speed is asked for next in
     /// speed mode; a mark without class (arrow keys) pauses in speed mode so the class can be chosen.
     /// </summary>
-    private void AddEntry(ImageMotion motion, VehicleClass? vehicleClass, bool askSpeed)
+    private void AddEntry(ImageMotion motion, VehicleClass? vehicleClass, bool askSpeed, bool smallVan = false)
     {
         if (_model is null || _player is null)
         {
             return;
         }
 
-        bool added = _model.Add(new GroundTruthEntry(_player.Offset, motion, vehicleClass));
+        bool added = _model.Add(new GroundTruthEntry(_player.Offset, motion, vehicleClass, SmallVan: smallVan));
         if (added && SpeedMode)
         {
             SetPaused(true);
@@ -595,14 +601,14 @@ internal sealed class MainWindow : Window
         Refresh();
     }
 
-    private void SetClass(VehicleClass vehicleClass)
+    private void SetClass(VehicleClass vehicleClass, bool smallVan = false)
     {
         if (_model?.Selected is null)
         {
             return;
         }
 
-        _model.SetClass(vehicleClass);
+        _model.SetClass(vehicleClass, smallVan);
         if (SpeedMode)
         {
             SetPaused(true);
@@ -668,25 +674,33 @@ internal sealed class MainWindow : Window
         SeekTo(_player.FrameAt(_model.Entries[index].Offset));
     }
 
-    private void FindBicycle(bool forward)
+    private void FindBicycle(bool forward) =>
+        Review(_model?.FindBicycle(_player!.Offset, forward), forward ? "No bicycle entries." : "No earlier bicycle.");
+
+    private void FindVan(bool forward) =>
+        Review(_model?.FindVan(_player!.Offset, forward), forward ? "No van entries." : "No earlier van.");
+
+    /// <summary>
+    /// Review of older counts: jumps to the found entry, selects it and plays it at normal speed, so a class key
+    /// (8: e-scooter, k: small van, 2: van) changes it.
+    /// </summary>
+    private void Review(int? found, string none)
     {
         if (_model is null || _player is null)
         {
             return;
         }
 
-        // Review of older counts: jump to the next (previous) bicycle, select it and play it at normal speed,
-        // so a key such as 8 turns it into an e-scooter.
-        if (_model.FindBicycle(_player.Offset, forward) is int found)
+        if (found is int index)
         {
-            _model.SelectedIndex = found;
+            _model.SelectedIndex = index;
             _speedIndex = Array.IndexOf(Speeds, 1.0);
-            SeekTo(_player.FrameAt(_model.Entries[found].Offset - ReviewLeadIn));
+            SeekTo(_player.FrameAt(_model.Entries[index].Offset - ReviewLeadIn));
             SetPaused(false);
         }
         else
         {
-            _message = Localizer.T(forward ? "No bicycle entries." : "No earlier bicycle.");
+            _message = Localizer.T(none);
             Refresh();
         }
     }
@@ -771,6 +785,15 @@ internal sealed class MainWindow : Window
                 return;
             case "B":
                 FindBicycle(forward: false);
+                return;
+            case "k":
+                SetClass(VehicleClass.Van, smallVan: true);
+                return;
+            case "t":
+                FindVan(forward: true);
+                return;
+            case "T":
+                FindVan(forward: false);
                 return;
             case "n":
                 StartNote();
@@ -918,7 +941,7 @@ internal sealed class MainWindow : Window
         _classOverlay.Children.Clear();
         foreach ((GroundTruthEntry entry, bool selected) in near)
         {
-            string text = $"{(entry.Motion == ImageMotion.LeftToRight ? "→" : "←")}  {ClassName(entry.Class)}" +
+            string text = $"{(entry.Motion == ImageMotion.LeftToRight ? "→" : "←")}  {EntryName(entry)}" +
                 (entry.SpeedKmh is float kmh ? $"  {kmh.ToString("0.#", Localizer.Culture)} km/h" : "");
             _classOverlay.Children.Add(new Border
             {
@@ -987,7 +1010,7 @@ internal sealed class MainWindow : Window
     }
 
     private static string Describe(GroundTruthEntry e) =>
-        $"{e.Offset:hh\\:mm\\:ss\\.f}  {(e.Motion == ImageMotion.LeftToRight ? "→" : "←")}  {ClassName(e.Class)}" +
+        $"{e.Offset:hh\\:mm\\:ss\\.f}  {(e.Motion == ImageMotion.LeftToRight ? "→" : "←")}  {EntryName(e)}" +
         (e.SpeedKmh is float kmh ? $"  {kmh.ToString("0.#", Localizer.Culture)} km/h" : "") + (e.Note is { } note ? $"  [{note}]" : "");
 
     private sealed record FileItem(string Name, string Path, bool IsFolder)

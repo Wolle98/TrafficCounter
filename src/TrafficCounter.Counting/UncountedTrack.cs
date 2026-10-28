@@ -19,6 +19,9 @@ public enum UncountedReason
 
     /// <summary>It was taken for a second track of a vehicle already counted (<see cref="CountingSettings.DuplicateSeconds"/>).</summary>
     Duplicate,
+
+    /// <summary>It ended just behind the line, closer than <see cref="CountingSettings.MinEndBeyondPixels"/>.</summary>
+    EndedAtLine,
 }
 
 /// <summary>

@@ -18,7 +18,12 @@ public enum ImageMotion
 /// Test drive (ADR-0035): in the file the speedometer reading at the line; the regression replaces it with the true
 /// speed from the speedometer calibration. Null for ordinary traffic.
 /// </param>
-public sealed record GroundTruthEntry(TimeSpan Offset, ImageMotion Motion, VehicleClass? Class = null, string? Note = null, float? SpeedKmh = null);
+/// <param name="SmallVan">
+/// A small van (high-roof estate such as Opel Combo or VW Caddy, ADR-0055): class Van, but counted as a car it is
+/// no error, since many of them are built as cars too. In the file the class is "SmallVan".
+/// </param>
+public sealed record GroundTruthEntry(
+    TimeSpan Offset, ImageMotion Motion, VehicleClass? Class = null, string? Note = null, float? SpeedKmh = null, bool SmallVan = false);
 
 /// <summary>
 /// Ground truth file "&lt;video&gt;.gt.csv": <c>offset_s;motion;class;note;speed_kmh</c>, one line per passage; the
@@ -28,6 +33,9 @@ public sealed record GroundTruthEntry(TimeSpan Offset, ImageMotion Motion, Vehic
 public static class GroundTruthFile
 {
     private const string Header = "offset_s;motion;class;note;speed_kmh";
+
+    /// <summary>Class column of a <see cref="GroundTruthEntry.SmallVan"/>.</summary>
+    public const string SmallVanClass = "SmallVan";
 
     public static string PathFor(string videoPath) => videoPath + ".gt.csv";
 
@@ -45,7 +53,7 @@ public static class GroundTruthFile
                 string note = entry.Note?.Replace(';', ',').ReplaceLineEndings(" ") ?? "";
                 writer.WriteLine(string.Create(
                     CultureInfo.InvariantCulture,
-                    $"{entry.Offset.TotalSeconds:0.000};{entry.Motion};{entry.Class?.ToString() ?? ""};{note};{entry.SpeedKmh?.ToString("0.#", CultureInfo.InvariantCulture) ?? ""}"));
+                    $"{entry.Offset.TotalSeconds:0.000};{entry.Motion};{(entry.SmallVan && entry.Class == VehicleClass.Van ? SmallVanClass : entry.Class?.ToString() ?? "")};{note};{entry.SpeedKmh?.ToString("0.#", CultureInfo.InvariantCulture) ?? ""}"));
             }
         }
 
@@ -72,10 +80,12 @@ public static class GroundTruthFile
                 throw new FormatException($"{path}:{lineNumber}: invalid ground truth line '{line}'.");
             }
 
-            VehicleClass? vehicleClass = parts.Length > 2 && Enum.TryParse(parts[2], out VehicleClass parsed) ? parsed : null;
+            bool smallVan = parts.Length > 2 && parts[2] == SmallVanClass;
+            VehicleClass? vehicleClass = smallVan ? VehicleClass.Van
+                : parts.Length > 2 && Enum.TryParse(parts[2], out VehicleClass parsed) ? parsed : null;
             string? note = parts.Length > 3 && parts[3].Length > 0 ? parts[3] : null;
             float? speed = parts.Length > 4 && float.TryParse(parts[4], NumberStyles.Float, CultureInfo.InvariantCulture, out float kmh) ? kmh : null;
-            entries.Add(new GroundTruthEntry(TimeSpan.FromSeconds(seconds), motion, vehicleClass, note, speed));
+            entries.Add(new GroundTruthEntry(TimeSpan.FromSeconds(seconds), motion, vehicleClass, note, speed, smallVan));
         }
 
         return entries;

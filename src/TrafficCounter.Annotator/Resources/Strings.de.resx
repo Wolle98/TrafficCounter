@@ -44,6 +44,9 @@
   <data name="paused" xml:space="preserve"><value>Pause</value></data>
   <data name="Continuing {0} with {1} entries." xml:space="preserve"><value>{0} wird mit {1} Einträgen fortgesetzt.</value></data>
   <data name="Video '{0}' could not be opened." xml:space="preserve"><value>Video „{0}“ ließ sich nicht öffnen.</value></data>
+  <data name="Small van" xml:space="preserve"><value>Kleiner Transporter</value></data>
+  <data name="No van entries." xml:space="preserve"><value>Keine Transporter-Einträge.</value></data>
+  <data name="No earlier van." xml:space="preserve"><value>Kein früherer Transporter.</value></data>
   <data name="No bicycle entries." xml:space="preserve"><value>Keine Fahrrad-Einträge.</value></data>
   <data name="No earlier bicycle." xml:space="preserve"><value>Kein früheres Fahrrad.</value></data>
   <data name="Select an entry first (mark a crossing or jump to an entry)." xml:space="preserve"><value>Erst einen Eintrag auswählen (Durchfahrt markieren oder zu einem Eintrag springen).</value></data>

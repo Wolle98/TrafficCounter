@@ -30,6 +30,9 @@ public sealed record EvaluationResult(
     /// <summary>Counted passages without a real counterpart.</summary>
     public IReadOnlyList<DetectedPassage> SpuriousPassages { get; init; } = [];
 
+    /// <summary>Small vans counted as cars; they count as right (ADR-0055) and are only reported.</summary>
+    public int ToleratedSmallVans { get; init; }
+
     /// <summary>Share of real passages that were counted (with the right direction).</summary>
     public double Recall => TruthCount == 0 ? 1 : (double)Matched / TruthCount;
 
@@ -91,6 +94,7 @@ public sealed record EvaluationResult(
         {
             MissedEntries = [.. all.SelectMany(r => r.MissedEntries)],
             SpuriousPassages = [.. all.SelectMany(r => r.SpuriousPassages)],
+            ToleratedSmallVans = all.Sum(r => r.ToleratedSmallVans),
         };
     }
 }
@@ -101,6 +105,17 @@ public sealed record EvaluationResult(
 /// </summary>
 public static class CountEvaluator
 {
+    /// <summary>
+    /// Tolerance for trucks, buses and agricultural or construction vehicles in the ground truth. The hand count marks
+    /// the front, the counter the centre of the box, which on an articulated lorry crosses several seconds later.
+    /// </summary>
+    public static readonly TimeSpan LongVehicleTolerance = TimeSpan.FromSeconds(5);
+
+    public static TimeSpan ToleranceFor(GroundTruthEntry entry, TimeSpan tolerance) =>
+        entry.Class is VehicleClass.Truck or VehicleClass.Bus or VehicleClass.Agricultural && LongVehicleTolerance > tolerance
+            ? LongVehicleTolerance
+            : tolerance;
+
     public static EvaluationResult Evaluate(
         IReadOnlyList<GroundTruthEntry> truth,
         Func<ImageMotion, TravelDirection> toDirection,
@@ -112,6 +127,7 @@ public static class CountEvaluator
         Dictionary<(VehicleClass, VehicleClass), int> confusion = [];
         int matched = 0;
         int directionErrors = 0;
+        int toleratedSmallVans = 0;
 
         foreach (bool sameDirection in new[] { true, false })
         {
@@ -119,7 +135,7 @@ public static class CountEvaluator
                 from t in Enumerable.Range(0, truth.Count)
                 from d in Enumerable.Range(0, detected.Count)
                 let difference = (truth[t].Offset - detected[d].Offset).Duration()
-                where difference <= tolerance && (toDirection(truth[t].Motion) == detected[d].Direction) == sameDirection
+                where difference <= ToleranceFor(truth[t], tolerance) && (toDirection(truth[t].Motion) == detected[d].Direction) == sameDirection
                 orderby difference
                 select (t, d);
 
@@ -140,7 +156,9 @@ public static class CountEvaluator
                 matched++;
                 if (truth[t].Class is VehicleClass truthClass)
                 {
-                    var key = (truthClass, detected[d].Class);
+                    bool tolerated = truth[t].SmallVan && detected[d].Class == VehicleClass.Car;
+                    toleratedSmallVans += tolerated ? 1 : 0;
+                    var key = (truthClass, tolerated ? truthClass : detected[d].Class);
                     confusion[key] = confusion.GetValueOrDefault(key) + 1;
                 }
             }
@@ -152,6 +170,7 @@ public static class CountEvaluator
         {
             MissedEntries = [.. truth.Where((_, i) => !truthUsed[i])],
             SpuriousPassages = [.. detected.Where((_, i) => !detectedUsed[i])],
+            ToleratedSmallVans = toleratedSmallVans,
         };
     }
 }

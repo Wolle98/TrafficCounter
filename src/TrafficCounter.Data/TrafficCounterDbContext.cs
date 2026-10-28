@@ -197,7 +197,7 @@ public class TrafficCounterDbContext : DbContext
                 new VehicleClassInfo { Id = VehicleClass.Truck, Name = "LKW" },
                 new VehicleClassInfo { Id = VehicleClass.Bus, Name = "Bus" },
                 new VehicleClassInfo { Id = VehicleClass.Motorcycle, Name = "Motorrad/Motorroller" },
-                new VehicleClassInfo { Id = VehicleClass.Bicycle, Name = "Fahrrad/E-Scooter" },
+                new VehicleClassInfo { Id = VehicleClass.Bicycle, Name = "Fahrrad" },
                 new VehicleClassInfo { Id = VehicleClass.Agricultural, Name = "Landwirtschaft & Baufahrzeuge" },
                 new VehicleClassInfo { Id = VehicleClass.EScooter, Name = "E-Scooter" });
         });

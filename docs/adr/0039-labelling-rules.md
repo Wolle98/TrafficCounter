@@ -1,6 +1,6 @@
 # ADR-0039: Labelling rules for own training images
 
-- **Status:** accepted 2026-10-18
+- **Status:** accepted 2026-10-18, extended by [ADR-0047](0047-trailer-class-tracked.md) (trailers tracked); the point that the counting adds e-scooters to bicycles is superseded by [ADR-0054](0054-vehicle-classes-as-counted.md); small vans: [ADR-0055](0055-small-vans.md)
 - **Date:** 2026-10-11
 - **Stage:** 3
 - **Supersedes:** in [ADR-0013](0013-vehicle-classes.md) the point "trailers are not labelled as a class of their own but enclosed in one box with the towing vehicle"

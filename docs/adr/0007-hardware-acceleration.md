@@ -1,6 +1,6 @@
 # ADR-0007: Hardware acceleration via DirectML with CPU fallback
 
-- **Status:** accepted, extended by [ADR-0029](0029-computing-load.md) (OpenVINO build for Intel graphics)
+- **Status:** accepted, extended by [ADR-0029](0029-computing-load.md) (OpenVINO build for Intel graphics) and [ADR-0041](0041-tensorrt-backend.md) (TensorRT and CUDA for NVIDIA)
 - **Date:** 2026-09-26
 - **Stage:** 1
 

@@ -1,0 +1,27 @@
+@* Notes (ADR-0051) as numbered footnotes below a table: the table shows only the number (id "note-n"), since a long
+   note would widen it. *@
+
+@if (Notes.Count > 0)
+{
+    <ol class="footnotes">
+        @for (int i = 0; i < Notes.Count; i++)
+        {
+            DayMarker note = Notes[i];
+            <li id="note-@(i + 1)"><span class="span">@Span(note)</span> @note.Text</li>
+        }
+    </ol>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<DayMarker> Notes { get; set; } = [];
+
+    /// <summary>Numbers (from 1) of the notes touching [<paramref name="from"/>, <paramref name="to"/>).</summary>
+    public static IReadOnlyList<int> NumbersOf(IReadOnlyList<DayMarker> notes, DateTime from, DateTime to) =>
+        [.. Enumerable.Range(1, notes.Count).Where(n => notes[n - 1].Touches(from, to))];
+
+    private string Span(DayMarker note) => note.WholeDays
+        ? note.End.AddDays(-1) == note.Start
+            ? L.Date(note.Start, "Format.DayRow")
+            : $"{L.Date(note.Start, "Format.DayRow")} – {L.Date(note.End.AddDays(-1), "Format.DayRow")}"
+        : $"{L.Date(note.Start, "Format.DateTimeShort")} – {L.Date(note.End, "Format.DateTimeShort")}";
+}

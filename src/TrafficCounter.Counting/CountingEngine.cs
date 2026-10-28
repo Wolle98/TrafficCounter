@@ -71,7 +71,7 @@ public sealed class CountingEngine(CountingSettings settings)
         {
             if (_tracks.TryGetValue(trackId, out TrackState? state))
             {
-                if (IsReadyToEmit(state) && state.EndedOnFarSide)
+                if (IsReadyToEmit(state) && state.EndedOnFarSide && state.DistanceBeyondLine >= settings.MinEndBeyondPixels)
                 {
                     AddOrReport(passages, state);
                 }
@@ -113,6 +113,7 @@ public sealed class CountingEngine(CountingSettings settings)
         state.IsTrailer || state.LeadingClass == VehicleClass.Trailer ? UncountedReason.Trailer
         : state.Crossing is null ? UncountedReason.NotCrossed
         : state.Frames < settings.MinTrackFrames ? UncountedReason.TooShort
+        : state.EndedOnFarSide ? UncountedReason.EndedAtLine
         : UncountedReason.TurnedBack;
 
     /// <summary>Adds a passage unless it is a second track of a vehicle already counted (see <see cref="CountingSettings.DuplicateSeconds"/>).</summary>
@@ -142,7 +143,7 @@ public sealed class CountingEngine(CountingSettings settings)
     private VehiclePassageEvent Emit(TrackState state)
     {
         int trailers = _tracks.Values.Count(s => s.IsTrailer && Root(s) == state.TrackId);
-        return state.Emit(trailers, settings.Speed);
+        return state.Emit(trailers, settings.Speed, settings.WeighVotesByWidth);
     }
 
     /// <summary>Towing vehicle at the head of a chain of trailers (tractor with two trailers).</summary>
@@ -168,8 +169,14 @@ public sealed class CountingEngine(CountingSettings settings)
             state.FirstTimestamp = timestamp;
             state.FirstDistance = distance;
         }
+        else if (settings.StandingSeconds > 0 && state.Crossing is null
+            && state.MovesOffAfterStanding(point, settings.StandingRadiusRatio * obj.Box.Height, timestamp, settings.StandingSeconds))
+        {
+            state.FirstTimestamp = timestamp;
+            state.FirstDistance = distance;
+        }
 
-        state.Vote(obj.Class, obj.Confidence);
+        state.Vote(obj.Class, obj.Confidence, obj.Box.Width);
         state.UpdateVelocity(point.X, timestamp);
         if (settings.Speed is { } speed && MathF.Abs(distance) <= speed.ZonePixels)
         {
@@ -301,6 +308,7 @@ public sealed class CountingEngine(CountingSettings settings)
         private const float VelocitySmoothing = 0.3f;
 
         private readonly Dictionary<VehicleClass, float> _votes = [];
+        private readonly List<(VehicleClass Class, float Confidence, float Width)> _frameVotes = [];
         private readonly List<(DateTimeOffset At, float X, float LinePosition)> _speedSamples = [];
         private float? _lastX;
         private DateTimeOffset _lastXAt;
@@ -309,6 +317,8 @@ public sealed class CountingEngine(CountingSettings settings)
         private DateTimeOffset _lastCoupledAt;
         private float _minGap;
         private float _maxGap;
+        private Point2? _anchor;
+        private DateTimeOffset _anchorAt;
 
         public int TrackId => trackId;
 
@@ -344,8 +354,11 @@ public sealed class CountingEngine(CountingSettings settings)
         /// <summary>False if the vehicle crossed but then backed up and left on its original side.</summary>
         public bool EndedOnFarSide => Crossing is { } c && EstablishedSide == c.Side;
 
-        public void Vote(VehicleClass vehicleClass, float confidence) =>
+        public void Vote(VehicleClass vehicleClass, float confidence, float width)
+        {
             _votes[vehicleClass] = _votes.GetValueOrDefault(vehicleClass) + confidence;
+            _frameVotes.Add((vehicleClass, confidence, width));
+        }
 
         /// <summary>The class currently winning the vote.</summary>
         public VehicleClass LeadingClass => _votes.Count == 0 ? VehicleClass.Unknown : _votes.MaxBy(v => v.Value).Key;
@@ -366,6 +379,37 @@ public sealed class CountingEngine(CountingSettings settings)
 
             _lastX = x;
             _lastXAt = timestamp;
+        }
+
+        /// <summary>
+        /// True if the point leaves the radius around where it stood for at least <paramref name="standingSeconds"/>;
+        /// the votes and speed samples gathered while standing are then dropped.
+        /// </summary>
+        public bool MovesOffAfterStanding(Point2 point, float radius, DateTimeOffset timestamp, float standingSeconds)
+        {
+            if (_anchor is not Point2 anchor)
+            {
+                (_anchor, _anchorAt) = (point, timestamp);
+                return false;
+            }
+
+            float dx = point.X - anchor.X;
+            float dy = point.Y - anchor.Y;
+            if ((dx * dx) + (dy * dy) <= radius * radius)
+            {
+                return false;
+            }
+
+            bool stood = (timestamp - _anchorAt).TotalSeconds >= standingSeconds;
+            (_anchor, _anchorAt) = (point, timestamp);
+            if (stood)
+            {
+                _votes.Clear();
+                _frameVotes.Clear();
+                _speedSamples.Clear();
+            }
+
+            return stood;
         }
 
         public void AddSpeedSample(DateTimeOffset timestamp, float x, float linePosition) =>
@@ -418,26 +462,36 @@ public sealed class CountingEngine(CountingSettings settings)
         public UncountedTrack ToUncounted(UncountedReason reason) =>
             new(trackId, LeadingClass, Frames, FirstTimestamp, LastTimestamp, FirstDistance, LastDistance ?? 0, reason);
 
-        public VehiclePassageEvent Emit(int trailers, SpeedSettings? speed)
+        public VehiclePassageEvent Emit(int trailers, SpeedSettings? speed, bool weighByWidth)
         {
             Emitted = true;
             Crossing crossing = Crossing!.Value;
 
+            Dictionary<VehicleClass, float> votes = _votes;
+            if (weighByWidth && _frameVotes.Count > 0)
+            {
+                float widest = _frameVotes.Max(v => v.Width);
+                votes = _frameVotes.GroupBy(v => v.Class).ToDictionary(g => g.Key, g => g.Sum(v => v.Confidence * v.Width / widest));
+            }
+
             VehicleClass winner = VehicleClass.Unknown;
             float? share = null;
-            float total = _votes.Values.Sum();
+            float total = votes.Values.Sum();
             if (total > 0)
             {
-                KeyValuePair<VehicleClass, float> best = _votes.MaxBy(v => v.Value);
+                KeyValuePair<VehicleClass, float> best = votes.MaxBy(v => v.Value);
                 winner = best.Key;
                 share = best.Value / total;
             }
 
             float? kmh = null;
+            float? meanKmh = null;
             if (speed is not null && _speedSamples.Count > 0)
             {
                 DateTimeOffset first = _speedSamples[0].At;
-                kmh = speed.Estimate([.. _speedSamples.Select(s => ((s.At - first).TotalSeconds, s.X, s.LinePosition))]);
+                List<(double, float, float)> samples = [.. _speedSamples.Select(s => ((s.At - first).TotalSeconds, s.X, s.LinePosition))];
+                kmh = speed.Estimate(samples);
+                meanKmh = speed.MeanSpeed(samples);
             }
 
             var observation = new TrackObservation(
@@ -445,7 +499,8 @@ public sealed class CountingEngine(CountingSettings settings)
                 _speedSamples.Count > 1 ? (_speedSamples[^1].At - _speedSamples[0].At).TotalSeconds : 0,
                 (LastTimestamp - FirstTimestamp).TotalSeconds,
                 FirstDistance,
-                LastDistance ?? 0);
+                LastDistance ?? 0,
+                meanKmh);
             return new VehiclePassageEvent(
                 crossing.At, crossing.Direction, winner, share, kmh, trackId, Frames, crossing.LinePosition, trailers, observation);
         }

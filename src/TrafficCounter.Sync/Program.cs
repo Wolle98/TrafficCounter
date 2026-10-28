@@ -30,6 +30,8 @@ switch (args.FirstOrDefault())
         return await CorrectPassagesAsync(options, newClass: null);
     case "set-class":
         return await CorrectPassagesAsync(options, Enum.Parse<VehicleClass>(options["class"], ignoreCase: true));
+    case "clear-speeds":
+        return await ClearSpeedsAsync(options);
     case "set-trailers":
         return await SetTrailersAsync(options);
     case "add-alongside":
@@ -83,6 +85,9 @@ switch (args.FirstOrDefault())
               TrafficCounter.Sync set-class --sync-ids <id>[,<id>...] --class <class> [--dry-run true]
                   Corrects single counted passages in both databases, e.g. a pram counted as a motorcycle (delete)
                   or two bicycles counted as a motorcycle (class). The id is the passage's SyncId, the same in both.
+              TrafficCounter.Sync clear-speeds --below <km/h> [--from <time>] [--to <time>] [--dry-run true]
+                  Removes stored speeds below the limit in both databases; the passages stay. For speeds that include
+                  a stop in the measuring area (ADR-0052) and so are no driving speed.
               TrafficCounter.Sync set-trailers --sync-ids <id>[,<id>...] --trailers <n> [--dry-run true]
                   Corrects the number of trailers of single passages in both databases, e.g. a cyclist riding behind
                   another that was taken for a trailer (then add-alongside adds the cyclist).
@@ -389,6 +394,29 @@ static async Task<int> CorrectPassagesAsync(Dictionary<string, string> options, 
                 : await passages.ExecuteDeleteAsync();
         string action = newClass is null ? "deleted" : $"set to {newClass}";
         Console.WriteLine($"{provider}: {count} of {ids.Count} passages {(dryRun ? "would be " : "")}{action}");
+    }
+
+    return 0;
+}
+
+static async Task<int> ClearSpeedsAsync(Dictionary<string, string> options)
+{
+    var invariant = System.Globalization.CultureInfo.InvariantCulture;
+    float below = float.Parse(options["below"], invariant);
+    DateTimeOffset from = options.TryGetValue("from", out string? f) ? DateTimeOffset.Parse(f, invariant) : DateTimeOffset.MinValue;
+    DateTimeOffset to = options.TryGetValue("to", out string? t) ? DateTimeOffset.Parse(t, invariant) : DateTimeOffset.MaxValue;
+    bool dryRun = options.GetValueOrDefault("dry-run") is "true";
+    if (!dryRun && !await BothReachableAsync())
+    {
+        return 1;
+    }
+
+    foreach (DatabaseProvider provider in new[] { DatabaseProvider.PostgreSql, DatabaseProvider.SqlServer })
+    {
+        await using TrafficCounterDbContext db = Open(provider);
+        IQueryable<VehiclePassage> passages = db.VehiclePassages.Where(p => p.SpeedKmh < below && p.PassedAt >= from && p.PassedAt < to);
+        int count = dryRun ? await passages.CountAsync() : await passages.ExecuteUpdateAsync(s => s.SetProperty(p => p.SpeedKmh, (float?)null));
+        Console.WriteLine($"{provider}: {count} speeds below {below} km/h {(dryRun ? "would be " : "")}removed");
     }
 
     return 0;

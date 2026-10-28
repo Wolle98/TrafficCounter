@@ -55,3 +55,7 @@ Format and process: [ADR-0001](0001-use-adrs.md) · Template: [0000-template.md]
 | [0049](0049-night-thresholds-at-dusk.md) | The night thresholds also apply at dusk | accepted | 1 |
 | [0050](0050-slow-e-scooters-everywhere.md) | E-scooters at walking pace are not counted on the road either | accepted | 3 |
 | [0051](0051-day-notes-and-holidays.md) | Notes on days and imported holidays explain unusual traffic | accepted | 4 |
+| [0052](0052-standing-vehicles-and-stops.md) | Standing vehicles start over, a stop gives no speed | accepted | 3 |
+| [0053](0053-speed-clips.md) | Short videos of passages with a conspicuous speed | accepted | 5 |
+| [0054](0054-vehicle-classes-as-counted.md) | Vehicle classes as counted with the own model | accepted | 3 |
+| [0055](0055-small-vans.md) | Small vans – labelled as vans, tolerated as cars | accepted | 3 |

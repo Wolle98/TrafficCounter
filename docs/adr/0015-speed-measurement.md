@@ -1,6 +1,6 @@
 # ADR-0015: Speed measurement via a homography of the road plane
 
-- **Status:** accepted 2026-10-18; so far a first step without homography is implemented with [ADR-0033](0033-speed-scale-from-vehicle-lengths.md) and [ADR-0034](0034-speed-scale-from-road-marking.md)
+- **Status:** accepted 2026-10-18; so far a first step without homography is implemented with [ADR-0033](0033-speed-scale-from-vehicle-lengths.md) and [ADR-0034](0034-speed-scale-from-road-marking.md); extended by [ADR-0052](0052-standing-vehicles-and-stops.md) (no speed through a stop)
 - **Date:** 2026-09-26
 - **Stage:** 5
 

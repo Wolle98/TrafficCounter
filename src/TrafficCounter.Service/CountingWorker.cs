@@ -95,6 +95,7 @@ internal sealed partial class CountingWorker(
         var lighting = new LightingClassifier(_options.Site.Latitude, _options.Site.Longitude);
         DriftReference? driftReference = LoadDriftReference();
         using ScheduledRecorder? recorder = CreateRecorder();
+        using SpeedClipRecorder? clips = CreateSpeedClipRecorder();
 
         // Recordings take the frames straight from the capture thread where possible: if counting stalls (e.g. a slow
         // detector run), the video must not get gaps (frames the counting skips are dropped before it sees them).
@@ -194,6 +195,7 @@ internal sealed partial class CountingWorker(
                         }
 
                         FrameResult result = pipeline.Process(frame!);
+                        clips?.Offer(frame!);
                         if (samples is not null && !samplesEnded)
                         {
                             if (!samples.IsActive(frame!.Timestamp))
@@ -234,6 +236,7 @@ internal sealed partial class CountingWorker(
                         {
                             writer.Enqueue(new PassageRecord(cameraId, periodId, passage, lighting.Classify(passage.PassedAt)));
                             LogPassage(passage);
+                            clips?.OnPassage(passage);
                         }
 
                         foreach (UncountedTrack track in result.Uncounted ?? [])
@@ -495,6 +498,27 @@ internal sealed partial class CountingWorker(
             "Recording mode enabled (ADR-0005): videos are recorded in the slots of {Schedule}",
             Path.Combine(recorder.Directory, ScheduledRecorder.ScheduleFileName));
         return recorder;
+    }
+
+    private SpeedClipRecorder? CreateSpeedClipRecorder()
+    {
+        if (!_options.SpeedClips.IsActive(time.GetLocalNow()))
+        {
+            if (_options.SpeedClips.Until is DateTimeOffset until && until > time.GetLocalNow())
+            {
+                _logger.LogWarning("Speed clips not enabled: SpeedClips:Until must lie at most {Days} days ahead and rules must be set", SpeedClipOptions.MaxDays);
+            }
+
+            return null;
+        }
+
+        var clips = new SpeedClipRecorder(
+            _options.SpeedClips, _options.Recording, PrivateLocations.ConfigPath, Path.Combine(paths.Root, "recordings"),
+            loggerFactory.CreateLogger<SpeedClipRecorder>());
+        _logger.LogWarning(
+            "Speed clips enabled (ADR-0053) until {Until:yyyy-MM-dd HH:mm}: passages with a conspicuous speed are recorded to {Directory}",
+            _options.SpeedClips.Until, clips.Directory);
+        return clips;
     }
 
     private DriftReference? LoadDriftReference()

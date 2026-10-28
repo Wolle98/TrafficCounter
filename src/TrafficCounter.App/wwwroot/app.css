@@ -5,6 +5,8 @@
     --accent: #2f5d9b;
     --bg: #f6f7f9;
     --card: #ffffff;
+    --public-holiday: #fde7c8;
+    --school-holiday: #e2f0d9;
 }
 
 * { box-sizing: border-box; }
@@ -94,6 +96,7 @@ h2 { font-size: 1.15rem; font-weight: 600; margin: 2rem 0 .6rem; }
 .legend i.line-key { height: 3px; vertical-align: 3px; }
 
 .hint { color: var(--muted); font-size: .85rem; }
+.notice { background: #fff8ec; border-left: 3px solid #f0a04b; padding: .4rem .7rem; font-size: .9rem; }
 .error { color: #b3261e; font-weight: 600; }
 
 table.data { border-collapse: collapse; width: 100%; background: var(--card); border: 1px solid var(--line); }
@@ -119,6 +122,10 @@ table.data tr.error td { background: #fdeceb; }
 table.heatmap { border-collapse: collapse; font-size: .78rem; background: var(--card); }
 table.heatmap th { padding: .2rem .35rem; color: var(--muted); font-weight: 600; }
 table.heatmap td { width: 2.4rem; height: 2rem; text-align: center; border: 2px solid var(--card); font-weight: 600; font-variant-numeric: tabular-nums; }
+table.heatmap th.publicholiday { background: var(--public-holiday); }
+table.heatmap th.schoolholiday { background: var(--school-holiday); }
+table.heatmap th.publicholiday.schoolholiday { background: linear-gradient(90deg, var(--public-holiday) 50%, var(--school-holiday) 50%); }
+table.heatmap th .footnote-ref { margin-left: .2rem; }
 table.heatmap td.empty { background: repeating-linear-gradient(135deg, #f2f2f2 0 4px, #e6e6e6 4px 8px); }
 
 /* Scale legend below the heatmap: the colour ramp from 0 to the largest value. */
@@ -161,10 +168,16 @@ button.quick.active, button.quick:hover { background: var(--accent); border-colo
 .marker { border-radius: .3rem; padding: .2rem .5rem; font-size: .9rem; background: #eef1f5; }
 .marker .kind { font-weight: 600; margin-right: .3rem; }
 .marker .span { color: var(--muted); margin-right: .3rem; }
-.marker.publicholiday { background: #fde7c8; }
-.marker.schoolholiday { background: #e2f0d9; }
+.marker.publicholiday { background: var(--public-holiday); }
+.marker.schoolholiday { background: var(--school-holiday); }
 .marker.note { background: #dbe8f7; }
 .notes-form { display: grid; grid-template-columns: max-content 1fr; gap: .5rem .8rem; align-items: center; max-width: 40rem; margin-bottom: 1.5rem; }
 .notes-form textarea { font: inherit; min-height: 4rem; }
 .notes-form .actions { grid-column: 2; display: flex; gap: .5rem; }
 td.markers-cell { font-size: .85rem; color: var(--muted); }
+.footnote-ref { display: inline-block; min-width: 1.3em; margin-right: .2rem; padding: 0 .3rem; border-radius: .6rem; background: #dbe8f7; color: var(--fg); font-size: .75rem; text-align: center; text-decoration: none; }
+ol.footnotes { font-size: .85rem; color: var(--muted); padding-left: 1.6rem; margin: .4rem 0 1rem; }
+ol.footnotes .span { font-weight: 600; margin-right: .3rem; }
+/* Stronger shades of the label colours: the pale ones vanish as a thin strip on white. */
+.chart .strip.publicholiday { fill: #f0a04b; }
+.chart .strip.schoolholiday { fill: #7dba5c; }

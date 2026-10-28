@@ -28,4 +28,9 @@ public sealed record VehiclePassageEvent(
 /// <param name="TrackSeconds">Time between the first and the last position of the whole track.</param>
 /// <param name="FirstDistance">Distance from the counting line (pixels, signed) where the track was first seen.</param>
 /// <param name="LastDistance">Distance from the counting line where it was last seen.</param>
-public sealed record TrackObservation(int SpeedSamples, double SpeedSeconds, double TrackSeconds, float FirstDistance, float LastDistance);
+/// <param name="MeanSpeedKmh">
+/// Mean speed over the zone including stops, also when the passage gets no speed because it stopped there; tells
+/// pedestrians from vehicles.
+/// </param>
+public sealed record TrackObservation(
+    int SpeedSamples, double SpeedSeconds, double TrackSeconds, float FirstDistance, float LastDistance, float? MeanSpeedKmh = null);

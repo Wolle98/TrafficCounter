@@ -4,6 +4,26 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.12.0] – 2026-10-28
+
+### Added
+
+- Clips of passages with a conspicuous speed (ADR-0053): with `SpeedClips:Until` and rules, the service writes a short video around every passage whose speed matches a rule (e.g. 45–55 km/h for all classes except cars, from 55 km/h for all), at most 50 a day; `tools/deploy/Get-SpeedClips.ps1` copies them into the private repository.
+- Small vans (high-roof estates, ADR-0055): the Annotator marks them with `k` or a quick button (class `SmallVan` in `.gt.csv`), `t`/`T` jump to the next or previous van; the regression accepts a small van counted as a car and reports how many there were.
+- `TrafficCounter.Sync clear-speeds --below <km/h>` removes stored speeds below a limit in both databases (ADR-0052).
+
+### Changed
+
+- Counting: a track that stood for 2 s starts its class votes, first position and speed samples over when it moves off, but only before it crosses the line (ADR-0052, `StandingResetSeconds`, 0 switches it off). A vehicle passing a parked one no longer inherits the parked vehicle's class.
+- Counting: the class of a track is decided with each frame's vote weighted by its box width, and bicycles, e-scooters and motorcycles start and continue tracks from a confidence of 0.3/0.35 (ADR-0052); in the regression 3 vehicles fewer missed, no more extra counts, 12 vans more classified right.
+- Speeds: a passage that stopped in the measuring zone (less than 1 m/s over 1 s) gets no speed; the walking-pace rules for pseudo-vehicles then use its mean speed (ADR-0052).
+- Analysis app, "Period": notes appear in the table only as a footnote number with their text below the table, so long notes no longer widen it; public and school holidays on the same day stand one per line. The chart marks public and school holidays with a strip in their colours between the bars and the dates (ADR-0051). The "Day pattern" colours the dates of public and school holidays and gives notes a footnote number.
+- Analysis app, "Period": when a period longer than 14 days is asked for by hours, a notice above the chart says that it is shown by days, how many days the period covers and that 14 days are the most by hours.
+- Class 6 is called "Fahrrad" (bicycle) in the database instead of "Fahrrad/E-Scooter"; e-scooters are a class of their own (ADR-0054, migration `RenameBicycleClass`).
+- Analysis app: quick ranges "last week" (Monday to Sunday of the previous week) and "last 14 days".
+- Regression: trucks, buses and agricultural & construction vehicles of the ground truth match within ±5 s, since the counter marks the centre of the box and the hand count the front.
+- Annotator: a mark without class (arrow key) is no longer saved; it waits for its class key, and only entries with a class reach `.gt.csv`.
+
 ## [0.11.0] – 2026-10-27
 
 ### Added

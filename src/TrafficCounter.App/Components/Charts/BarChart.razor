@@ -1,4 +1,5 @@
-@* Stacked bar chart as plain SVG, with an optional comparison line and grey background where data is missing. *@
+@* Stacked bar chart as plain SVG, with an optional comparison line, grey background where data is missing and
+   coloured strips below the bars (holidays). *@
 @using System.Globalization
 
 <svg class="chart" viewBox="0 0 @Width @Height" role="img" aria-label="@Title">
@@ -48,6 +49,17 @@
             }
         }
 
+        @foreach (ChartStrip strip in Strips ?? [])
+        {
+            double y = Top + PlotHeight + StripGap + (strip.Row * (StripHeight + StripGap));
+            foreach ((int first, int last, string title) in Runs(strip))
+            {
+                <rect x="@F(Left + (first * Slot))" y="@F(y)" width="@F((last - first + 1) * Slot)" height="@F(StripHeight)" class="strip @strip.CssClass">
+                    <title>@title</title>
+                </rect>
+            }
+        }
+
         @if (Line is { } line)
         {
             <polyline points="@LinePoints(line)" class="line" stroke="@line.Color" />
@@ -92,6 +104,9 @@
 
     [Parameter] public string Title { get; set; } = "";
 
+    /// <summary>Optional strips between the bars and the labels, in the rows they name.</summary>
+    [Parameter] public IReadOnlyList<ChartStrip>? Strips { get; set; }
+
     [Parameter] public int LabelEvery { get; set; } = 1;
 
     [Parameter] public bool ShowLegend { get; set; } = true;
@@ -104,7 +119,13 @@
     private const double Left = 44;
     private const double Right = 8;
     private const double Top = 10;
-    private const double Bottom = 24;
+    private const double LabelSpace = 24;
+    private const double StripHeight = 5;
+    private const double StripGap = 2;
+
+    private int StripRows => Strips is { Count: > 0 } strips ? strips.Max(s => s.Row) + 1 : 0;
+
+    private double Bottom => LabelSpace + (StripRows * (StripHeight + StripGap));
 
     private double PlotHeight => Height - Top - Bottom;
 
@@ -153,6 +174,26 @@
         .Select((v, i) => (v, i))
         .Where(p => p.v is not null)
         .Select(p => $"{F(Left + (p.i * Slot) + (Slot / 2))},{F(Y(p.v!.Value))}"));
+
+    /// <summary>Consecutive bars with the same title, as one stretch each.</summary>
+    private static IEnumerable<(int First, int Last, string Title)> Runs(ChartStrip strip)
+    {
+        int? start = null;
+        for (int i = 0; i <= strip.Titles.Count; i++)
+        {
+            string? title = i < strip.Titles.Count ? strip.Titles[i] : null;
+            if (start is int s && (title is null || title != strip.Titles[s]))
+            {
+                yield return (s, i - 1, strip.Titles[s]!);
+                start = null;
+            }
+
+            if (start is null && title is not null)
+            {
+                start = i;
+            }
+        }
+    }
 
     private static string F(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
 }

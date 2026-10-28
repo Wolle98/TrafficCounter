@@ -58,7 +58,9 @@ internal sealed class AnnotationModel
         return true;
     }
 
-    public void SetClass(VehicleClass vehicleClass) => ReplaceSelected(e => e with { Class = vehicleClass });
+    /// <summary>Class of the selected entry; <paramref name="smallVan"/> marks a small van (ADR-0055).</summary>
+    public void SetClass(VehicleClass vehicleClass, bool smallVan = false) =>
+        ReplaceSelected(e => e with { Class = vehicleClass, SmallVan = smallVan && vehicleClass == VehicleClass.Van });
 
     public void SetNote(string? note) => ReplaceSelected(e => e with { Note = string.IsNullOrWhiteSpace(note) ? null : note });
 
@@ -106,15 +108,20 @@ internal sealed class AnnotationModel
     /// Index of the next (or previous) bicycle entry. Searched from the selected entry if that lies ahead, so pressing
     /// the key again before playback reaches the selected bicycle moves on instead of finding it again.
     /// </summary>
-    public int? FindBicycle(TimeSpan current, bool forward)
+    public int? FindBicycle(TimeSpan current, bool forward) => Find(e => e.Class == VehicleClass.Bicycle, current, forward);
+
+    /// <summary>The same for vans, to sort them into small and large ones (ADR-0055).</summary>
+    public int? FindVan(TimeSpan current, bool forward) => Find(e => e.Class == VehicleClass.Van, current, forward);
+
+    private int? Find(Func<GroundTruthEntry, bool> match, TimeSpan current, bool forward)
     {
         TimeSpan from = Selected is { } s && (forward ? s.Offset > current : s.Offset < current) ? s.Offset : current;
-        List<int> bicycles = [.. Enumerable.Range(0, _entries.Count).Where(i => _entries[i].Class == VehicleClass.Bicycle)];
-        // A video opens near its last entry; going forward from there starts over at the first bicycle.
+        List<int> found = [.. Enumerable.Range(0, _entries.Count).Where(i => match(_entries[i]))];
+        // A video opens near its last entry; going forward from there starts over at the first match.
         return forward
-            ? bicycles.Where(i => _entries[i].Offset > from).OrderBy(i => _entries[i].Offset).Cast<int?>().FirstOrDefault()
-                ?? bicycles.OrderBy(i => _entries[i].Offset).Cast<int?>().FirstOrDefault()
-            : bicycles.Where(i => _entries[i].Offset < from).OrderByDescending(i => _entries[i].Offset).Cast<int?>().FirstOrDefault();
+            ? found.Where(i => _entries[i].Offset > from).OrderBy(i => _entries[i].Offset).Cast<int?>().FirstOrDefault()
+                ?? found.OrderBy(i => _entries[i].Offset).Cast<int?>().FirstOrDefault()
+            : found.Where(i => _entries[i].Offset < from).OrderByDescending(i => _entries[i].Offset).Cast<int?>().FirstOrDefault();
     }
 
     /// <summary>
@@ -191,11 +198,13 @@ internal sealed class AnnotationModel
     /// <summary>
     /// Writes the annotations after every change. A file briefly locked by a virus scanner or sync tool must not end
     /// the session: the entries stay in memory, a warning is shown and the next change writes them again. A video
-    /// that was only opened gets no file, so the file list does not mark it as annotated.
+    /// that was only opened gets no file, so the file list does not mark it as annotated. A mark without class (arrow
+    /// key) waits in memory for its class key and is never written: a vehicle without class is no annotation.
     /// </summary>
     public void Save()
     {
-        if (_entries.Count == 0 && !File.Exists(Path))
+        List<GroundTruthEntry> complete = [.. _entries.Where(e => e.Class is not null)];
+        if (complete.Count == 0 && !File.Exists(Path))
         {
             return;
         }
@@ -204,7 +213,7 @@ internal sealed class AnnotationModel
         {
             try
             {
-                GroundTruthFile.Write(Path, _entries);
+                GroundTruthFile.Write(Path, complete);
                 Warning = null;
                 return;
             }

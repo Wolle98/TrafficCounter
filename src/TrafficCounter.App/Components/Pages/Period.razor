@@ -47,6 +47,11 @@
 }
 else if (_buckets.Count > 0)
 {
+    @if (_hourlyTooLong)
+    {
+        <p class="notice">@L["Period.DaysOnly", _shownDays, MaxHourlyDays]</p>
+    }
+
     <DayMarkerList Markers="@_markers" ShowDates="true" />
 
     <div class="tiles">
@@ -58,15 +63,11 @@ else if (_buckets.Count > 0)
     @if (_sideBySide && _direction == "" && _camera is not null)
     {
         <BarChart Labels="@Labels" Series="@SeriesFor(TravelDirection.A)" SecondSeries="@SeriesFor(TravelDirection.B)"
-                  FirstName="@_camera.DirectionA" SecondName="@_camera.DirectionB" Coverage="@CoverageList" LabelEvery="@LabelEvery" Title="@L["Period.ChartByDirection"]" />
+                  FirstName="@_camera.DirectionA" SecondName="@_camera.DirectionB" Coverage="@CoverageList" LabelEvery="@LabelEvery" Strips="@HolidayStrips" Title="@L["Period.ChartByDirection"]" />
     }
     else
     {
-        <BarChart Labels="@Labels" Series="@SeriesFor(null)" Coverage="@CoverageList" LabelEvery="@LabelEvery" Title="@L["Period.Chart"]" />
-    }
-    @if (_hourlyTooLong)
-    {
-        <p class="hint">@L["Period.DaysOnly"]</p>
+        <BarChart Labels="@Labels" Series="@SeriesFor(null)" Coverage="@CoverageList" LabelEvery="@LabelEvery" Strips="@HolidayStrips" Title="@L["Period.Chart"]" />
     }
     @if (_weather.Count > 0)
     {
@@ -112,11 +113,21 @@ else if (_buckets.Count > 0)
                     {
                         <td class="num">@(bucket.RatePerHour?.ToString("0", Culture) ?? "–")</td>
                     }
-                    <td class="markers-cell">@MarkersOf(bucket)</td>
+                    <td class="markers-cell">
+                        @foreach (DayMarker holiday in HolidaysOf(bucket))
+                        {
+                            <div class="@holiday.Kind.ToString().ToLowerInvariant()">@holiday.Text</div>
+                        }
+                        @foreach (int number in NoteNumbersOf(bucket))
+                        {
+                            <a class="footnote-ref" href="#note-@number" title="@Notes[number - 1].Text">@number</a>
+                        }
+                    </td>
                 </tr>
             }
         </tbody>
     </table>
+    <NoteFootnotes Notes="@Notes" />
     @if (_buckets.Any(b => b.Minutes > 0 && IsEstimate(b)))
     {
         <p class="hint">@L["Table.EstimateFootnote"]</p>
@@ -135,7 +146,11 @@ else if (_buckets.Count > 0)
     private string _direction = "";
     private readonly HashSet<VehicleClass> _hidden = [];
     private bool _sideBySide;
+    /// <summary>Longest period shown by hours; longer ones would give more bars than the chart can show.</summary>
+    private const int MaxHourlyDays = 14;
+
     private bool _hourlyTooLong;
+    private int _shownDays;
     private List<PassageRow> _filtered = [];
     private List<Bucket> _buckets = [];
     private List<WeatherRow> _weather = [];
@@ -181,9 +196,40 @@ else if (_buckets.Count > 0)
         return (minutes / 60, inHours.Count * 60 / minutes, inHours.Count(p => p.Class == VehicleClass.Bicycle) * 60 / minutes);
     }
 
-    /// <summary>Names of the holidays and notes touching the bucket, for the table.</summary>
-    private string MarkersOf(Bucket bucket) =>
-        string.Join(" · ", _markers.Where(m => m.Touches(bucket.Start, bucket.Start + _size)).Select(m => m.Text));
+    /// <summary>Public and school holidays touching the bucket, named in the table, one per line.</summary>
+    private IEnumerable<DayMarker> HolidaysOf(Bucket bucket) =>
+        _markers.Where(m => m.Kind != DayMarkerKind.Note && m.Touches(bucket.Start, bucket.Start + _size)).OrderBy(m => m.Kind);
+
+    /// <summary>
+    /// Notes of the shown rows, numbered in order: in the table only their number, the text below it as a footnote,
+    /// since a long note would widen the table.
+    /// </summary>
+    private List<DayMarker> Notes => [.. _markers.Where(m => m.Kind == DayMarkerKind.Note
+        && _buckets.Any(b => b.Minutes > 0 && m.Touches(b.Start, b.Start + _size))).OrderBy(m => m.Start)];
+
+    private IReadOnlyList<int> NoteNumbersOf(Bucket bucket) => NoteFootnotes.NumbersOf(Notes, bucket.Start, bucket.Start + _size);
+
+    /// <summary>
+    /// A strip below the bars per kind of holiday that occurs, in the colour of its label above the chart; both in one
+    /// line unless a public holiday falls into school holidays.
+    /// </summary>
+    private IReadOnlyList<ChartStrip> HolidayStrips
+    {
+        get
+        {
+            List<string?> Titles(DayMarkerKind kind) => [.. _buckets.Select(b =>
+                _markers.FirstOrDefault(m => m.Kind == kind && m.Touches(b.Start, b.Start + _size)) is { } m ? $"{L[$"Marker.{kind}"]}: {m.Text}" : null)];
+            List<string?> holidays = Titles(DayMarkerKind.PublicHoliday);
+            List<string?> schoolHolidays = Titles(DayMarkerKind.SchoolHoliday);
+            bool overlap = holidays.Where((t, i) => t is not null && schoolHolidays[i] is not null).Any();
+            return [.. new[]
+                {
+                    new ChartStrip("schoolholiday", schoolHolidays, overlap ? 1 : 0),
+                    new ChartStrip("publicholiday", holidays),
+                }
+                .Where(strip => strip.Titles.Any(t => t is not null))];
+        }
+    }
 
     private IReadOnlyList<double> CoverageList => [.. _buckets.Select(b => b.Minutes == 0 ? 1 : b.Coverage)];
 
@@ -238,7 +284,8 @@ else if (_buckets.Count > 0)
 
             List<PassageRow> passages = await Queries.PassagesAsync(_camera.Id, from, to);
             HashSet<DateTime> covered = TrafficStatistics.CoveredMinutes(await Queries.MinutesAsync(_camera.Id, from, to));
-            _hourlyTooLong = _granularity == "hour" && (to - from).TotalDays > 14;
+            _shownDays = (int)Math.Round((to - from).TotalDays);
+            _hourlyTooLong = _granularity == "hour" && _shownDays > MaxHourlyDays;
             _filtered = [.. passages.Where(p => !_hidden.Contains(p.Class)
                 && (_direction == "" || p.Direction.ToString() == _direction))];
             _size = Size;

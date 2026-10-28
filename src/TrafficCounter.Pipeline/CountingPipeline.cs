@@ -125,9 +125,12 @@ public sealed class CountingPipeline(IObjectDetector detector, ITracker tracker,
     /// <summary>Emits passages still waiting for their track to end, e.g. on shutdown.</summary>
     public IReadOnlyList<VehiclePassageEvent> Flush() => [.. Counted(_counter?.Flush() ?? [])];
 
-    /// <summary>Passages that are vehicles: prams and the like on the sidewalk, taken for a motorcycle, are dropped.</summary>
+    /// <summary>
+    /// Passages that are vehicles: prams and the like on the sidewalk, taken for a motorcycle, are dropped. A passage
+    /// that stopped in the zone has no speed; its mean speed decides then, or a pedestrian who paused would count.
+    /// </summary>
     private IEnumerable<VehiclePassageEvent> Counted(IEnumerable<VehiclePassageEvent> passages) =>
-        passages.Where(p => !site.IsPseudoVehicle(p.Class, p.SpeedKmh, p.LinePosition));
+        passages.Where(p => !site.IsPseudoVehicle(p.Class, p.SpeedKmh ?? p.Track?.MeanSpeedKmh, p.LinePosition));
 
     public void Dispose()
     {

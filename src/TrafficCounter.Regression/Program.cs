@@ -32,6 +32,8 @@ if (args is ["-h" or "--help", ..])
                                     [--max-fps 0] [--motion-gate on|off] [--threads 0] [--openvino-device GPU|CPU|NPU|AUTO]
                                     [--night-confidence 0.2/0.25] [--dusk-thresholds day|night] [--enhance none|clahe[:clip]|gamma[:gamma]|grayscale] [--enhance-from night|dusk|day]
                                     [--resize linear|area] [--provider TensorRT|Cuda --nvidia-libs <dir;dir>]
+                                    [--standing-reset 2] [--min-end-beyond 0] [--weigh-votes none|width]
+                                    [--two-wheeler-confidence 0.3/0.35|off]
           (load settings as in the service, ADR-0029; the run also reports the computing load)
           TrafficCounter.Regression --video <video.mp4> --trace <mm:ss-mm:ss> [--config ...] [--model ...]
           TrafficCounter.Regression --live true [--database SqlServer|PostgreSql] [--video ...] [--recordings ...]
@@ -81,13 +83,15 @@ if (options.TryGetValue("new-track-confidence", out string? newTrack))
 
 if (options.TryGetValue("two-wheeler-confidence", out string? twoWheeler))
 {
-    // "high/new", e.g. 0.3/0.35: thresholds for bicycles and motorcycles.
+    // "high/new", e.g. 0.3/0.35: thresholds for bicycles, e-scooters and motorcycles; "off": the same as for all.
     string[] parts = twoWheeler.Split('/');
-    trackerSettings = trackerSettings with
-    {
-        TwoWheelerHighConfidence = float.Parse(parts[0], CultureInfo.InvariantCulture),
-        TwoWheelerNewTrackConfidence = float.Parse(parts[^1], CultureInfo.InvariantCulture),
-    };
+    trackerSettings = twoWheeler is "off"
+        ? trackerSettings with { TwoWheelerHighConfidence = null, TwoWheelerNewTrackConfidence = null }
+        : trackerSettings with
+        {
+            TwoWheelerHighConfidence = float.Parse(parts[0], CultureInfo.InvariantCulture),
+            TwoWheelerNewTrackConfidence = float.Parse(parts[^1], CultureInfo.InvariantCulture),
+        };
 }
 
 if (options.GetValueOrDefault("dusk-thresholds") is { } duskThresholds)
@@ -400,6 +404,11 @@ foreach (ClassScore s in total.ClassScores())
         $"  {s.Class,-14} annotated {s.Truth,4}  counted as {s.Detected,4}  right {s.Correct,4}  recall {s.Recall,6:P1}  precision {s.Precision,6:P1}  F1 {s.F1:0.000}"));
 }
 
+if (total.ToleratedSmallVans > 0)
+{
+    Console.WriteLine($"  of the vans: {total.ToleratedSmallVans} small vans counted as car, taken as right (ADR-0055)");
+}
+
 foreach ((string label, EvaluationResult r) in new[] { "day", "dusk", "night" }
     .Select(tag => (tag, EvaluationResult.Combine(results.Where(x => x.Tags.Contains(tag)).Select(x => x.Result))))
     .Append(("all", total)))
@@ -444,6 +453,21 @@ SiteOptions SiteFor(string video)
     if (options.TryGetValue("speed-min-seconds", out string? minSeconds))
     {
         recordedSite.SpeedMinSeconds = float.Parse(minSeconds, CultureInfo.InvariantCulture);
+    }
+
+    if (options.TryGetValue("standing-reset", out string? standing))
+    {
+        recordedSite.StandingResetSeconds = float.Parse(standing, CultureInfo.InvariantCulture);
+    }
+
+    if (options.TryGetValue("weigh-votes", out string? weigh))
+    {
+        recordedSite.WeighVotesByWidth = weigh is "width";
+    }
+
+    if (options.TryGetValue("min-end-beyond", out string? endBeyond))
+    {
+        recordedSite.MinEndBeyondFraction = float.Parse(endBeyond, CultureInfo.InvariantCulture);
     }
 
     return band is { } b ? recordedSite.ForCrop(b.Top, b.Bottom) : recordedSite;
