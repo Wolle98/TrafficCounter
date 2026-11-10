@@ -82,6 +82,18 @@ public sealed class SqlTrafficStoreTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_class_without_a_vehicle_class_row_is_refused_as_rejected()
+    {
+        SqlTrafficStore store = CreateStore();
+        int camera = await store.EnsureCameraAsync(Camera, Ct);
+        (int period, _) = await store.StartPeriodAsync(camera, Start(Samples.T0), Ct);
+        PassageRecord trailer = Samples.Passage(1, period) with { CameraId = camera };
+        trailer = trailer with { Passage = trailer.Passage with { Class = VehicleClass.Trailer } };
+
+        await Assert.ThrowsAsync<RecordsRejectedException>(() => store.WriteAsync([trailer], Ct));
+    }
+
+    [Fact]
     public async Task Start_event_names_the_camera()
     {
         SqlTrafficStore store = CreateStore();

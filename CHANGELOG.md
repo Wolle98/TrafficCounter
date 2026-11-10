@@ -4,6 +4,70 @@ All programs share one version (ADR-0038). Format based on [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.17.0] – 2026-11-10
+
+### Added
+
+- A passage gets no speed if the source did not deliver frames at its normal rate while the vehicle was in the speed zone (ADR-0063): a stalled stream delivers frames late and then in a rush, and their arrival times made single speeds far too low or too high (24.9 instead of about 41 km/h, 70 instead of about 32 km/h). The normal rate is the median over five minutes; the limit is ±15 %. The ratio is logged with every passage and shown by the regression trace.
+- Analysis app: hours of the day pattern that were not measured for all 60 minutes are marked with a star and explained in a footnote.
+- `TrafficCounter.Sync mark-unmeasured --state degraded` marks minutes as degraded instead of unavailable.
+
+## [0.16.0] – 2026-11-02
+
+### Changed
+
+- The speed zone grows until it has twelve positions, up to ±800 px at 1920 (`SpeedWantedSamples`, `SpeedMaxZoneFraction`, ADR-0062); eight positions remain the minimum for a speed. On speed clips the largest deviation of cars against a reference without detector boxes falls from +31 % to +15 %. In replays of two recordings of one hour, passages and classes stayed the same and about 4 % of the speeds changed, mostly those of fast vehicles.
+- Car speeds of the main camera stored at night under 0.14.0 scaled ×0.93 to the lane from the box bottom (ADR-0061). Counts, day and dusk, other classes and the second camera are unchanged.
+
+## [0.15.0] – 2026-11-02
+
+### Changed
+
+- Speeds on a camera model at night (ADR-0060, supersedes ADR-0059): the lane of a car comes from its box bottom again, day and night. Against tracked wheel hubs of all cars in a night recording, the roof lane at 1.37 m read +5.5 to +8.3 % and the box bottom +1.1 to +2.8 %. Night speeds of cars fall by about 5–7 %; daylight, dusk and other classes are unchanged.
+
+## [0.14.0] – 2026-10-31
+
+### Changed
+
+- Speeds on a camera model at night (ADR-0059): the lane of a car comes from its box top with a roof height of 1.37 m when the sun is below −6°, since headlight light on the road stretches the box downwards and moved the lane from the box bottom 0.5–1 m towards the camera. Night speeds of cars rise by about 3–8 %; daylight, dusk and other classes are unchanged. `CameraModel.ToRoad` takes a height above the road.
+
+### Added
+
+- `TrafficCounter.Sync scale-speeds --class <class> --factor <f> --backup <csv>` multiplies the stored speeds of one vehicle class in a period in both databases and writes the old speeds to a backup file first (ADR-0057).
+
+### Changed
+
+- Stored speeds of the main camera before 0.13.1 scaled per class to the camera model: buses ×1.38, trucks ×1.05, vans ×1.03 (ADR-0057), bicycles ×0.956, e-scooters ×0.948, motorcycles ×0.967 (ADR-0058).
+
+## [0.13.1] – 2026-10-31
+
+### Fixed
+
+- Speeds with a camera model (ADR-0056): the service got the camera's rotation, position and road plane as zero, because the configuration binder appends configured array items to non-empty defaults; it measured about 0 km/h. The arrays now start empty, and a camera model with a wrong number of values is refused at start. The regression read the file directly and was not affected.
+
+## [0.13.0] – 2026-10-31
+
+### Changed
+
+- Speeds on a camera model (ADR-0056): with `Site:Camera` (a calibrated camera with lens distortion, pose and road plane) the speed is measured in metres on the road. The positions come from the box edges that belong to the vehicle's camera-near vertical edge, put into its lane and rising to the roof, with one common slope over all edges; long and tall vehicles no longer lose speed because their box is cut off at the image border (a city bus was measured 24 % too slow). Without a camera model the linear scale between the kerbs stays (ADR-0034); the ×1.08 factor of the kerb scales then no longer applies to the camera that has a model.
+- Speeds: at least 8 positions instead of 5 (`Site:SpeedMinSamples`). A vehicle with fewer positions in the zone gets a zone that grows in steps of 50 px up to `Site:SpeedMaxZoneFraction` (0.3125 of the image width), so fast vehicles keep their speed.
+
+### Added
+
+- `TrafficCounter.Regression --camera <json>` measures speeds with a camera model, `--speed-min-samples <n>` sets the minimum; `--trace` honours `--max-fps` like the service and prints the box edges of each track (`#id:Class@x,y[left..right,top]`).
+
+## [0.12.1] – 2026-10-29
+
+### Fixed
+
+- Counting: a track was emitted with class `Trailer` when the unweighted class vote (which decides whether a track is a trailer) and the width-weighted vote (which decides the stored class) disagreed. Such a track is now an uncounted trailer, as intended by ADR-0047.
+- Storage: a record the database refuses for good (constraint violation) no longer counts as an outage. The writer isolates it by halving the batch, sets it aside in `<fallback>.rejected` with an error log entry and a system event, and writes the rest; before, the refused record blocked every later record and the replay of the fallback file.
+
+### Added
+
+- `tools/deploy/Sync-FillDegraded.ps1`: `-SpeedClipsFrom` fetches new speed clips after the sync; `-Exclude <from>/<to>` leaves spans out of the fill, e.g. while the second camera counts a vehicle standing on the line again and again.
+- `tools/training/train_model.py --motion-blur <p> --noise <p>` (`camera_effects.py`): horizontal motion blur on the vehicle boxes and sensor noise on the whole image, for night and rain, where the camera exposes longer.
+
 ## [0.12.0] – 2026-10-28
 
 ### Added

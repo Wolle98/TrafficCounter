@@ -1,6 +1,6 @@
 # ADR-0034: Speed scale from a measured road marking
 
-- **Status:** accepted
+- **Status:** accepted; superseded by [ADR-0056](0056-speed-from-camera-model-and-near-edges.md) for cameras with a camera model
 - **Date:** 2026-10-06
 - **Stage:** 5
 - **Extends:** [ADR-0033](0033-speed-scale-from-vehicle-lengths.md) (scale from vehicle lengths), [ADR-0015](0015-speed-measurement.md)

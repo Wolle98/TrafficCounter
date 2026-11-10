@@ -29,6 +29,84 @@ public sealed class RelativeRect
 }
 
 /// <summary>
+/// Calibrated camera with lens distortion and the road plane (ADR-0056); see <see cref="Counting.CameraModel"/> for the
+/// meaning of the values. Pixels refer to the full camera image of <see cref="ReferenceWidth"/> ×
+/// <see cref="ReferenceHeight"/>; world coordinates are meters in a local east/north/up frame. Fitted from geodata
+/// and image points (private repo, <c>config/reference/geo</c>).
+/// </summary>
+public sealed class CameraModelOptions
+{
+    public double ReferenceWidth { get; set; } = 1920;
+
+    public double ReferenceHeight { get; set; } = 1080;
+
+    public double Focal { get; set; }
+
+    public double PrincipalX { get; set; }
+
+    public double PrincipalY { get; set; }
+
+    public double K1 { get; set; }
+
+    public double DistortionScale { get; set; } = 960;
+
+    // Arrays start empty: the configuration binder appends configured items to existing ones.
+    public double[] Rotation { get; set; } = [];
+
+    public double[] Center { get; set; } = [];
+
+    public double[] Ground { get; set; } = [];
+
+    public double[] RoadOrigin { get; set; } = [];
+
+    public double[] RoadAxis { get; set; } = [];
+
+    public double[] AcrossAxis { get; set; } = [];
+
+    /// <summary>Rows of the reference image the processed frames hold (set for recordings of a band).</summary>
+    public double CropTop { get; set; }
+
+    public double CropHeight { get; set; } = 1;
+
+    public CameraModel Model
+    {
+        get
+        {
+            Require(Rotation, 3, nameof(Rotation));
+            Require(Center, 3, nameof(Center));
+            Require(Ground, 3, nameof(Ground));
+            Require(RoadOrigin, 2, nameof(RoadOrigin));
+            Require(RoadAxis, 2, nameof(RoadAxis));
+            Require(AcrossAxis, 2, nameof(AcrossAxis));
+            return new(
+                ReferenceWidth, ReferenceHeight, Focal, PrincipalX, PrincipalY, K1, DistortionScale, Rotation, Center,
+                Ground, RoadOrigin, RoadAxis, AcrossAxis)
+            {
+                CropTop = CropTop,
+                CropHeight = CropHeight,
+            };
+        }
+    }
+
+    public CameraModelOptions ForCrop(float top, float bottom)
+    {
+        var cropped = (CameraModelOptions)MemberwiseClone();
+        cropped.CropTop = CropTop + (top * CropHeight);
+        cropped.CropHeight = (bottom - top) * CropHeight;
+        return cropped;
+    }
+
+    private static void Require(double[] values, int length, string name)
+    {
+        if (values.Length != length)
+        {
+            throw new InvalidOperationException(
+                $"Site:Camera:{name} needs {length} values, the configuration has {values.Length}.");
+        }
+    }
+}
+
+/// <summary>
 /// Site-specific geometry (private configuration, written by the calibrator). All positions are fractions of the
 /// frame size, so they stay valid when the resolution changes.
 /// </summary>
@@ -89,6 +167,12 @@ public sealed class SiteOptions
     public float? NearKerbMetersPerImageWidth { get; set; }
 
     /// <summary>
+    /// Camera model (ADR-0056): with it, speeds are measured in meters on the road from the camera-near box edges, and
+    /// the kerb scales above are not used for speeds. Null: linear scale between the kerbs.
+    /// </summary>
+    public CameraModelOptions? Camera { get; set; }
+
+    /// <summary>
     /// Motorcycles slower than this on a sidewalk (outside the kerbs) are not counted: a motorcycle does not ride at
     /// walking pace on the sidewalk, but the detector takes prams, walkers and pushed bikes for one. Null: off.
     /// Needs the kerbs and the speed scale. Bicycles on the sidewalk still count (ADR-0020).
@@ -124,6 +208,20 @@ public sealed class SiteOptions
     /// lane without a speed; 0.25 s still needs at least five positions (MinSamples), at 15 fps about 0.27 s.
     /// </summary>
     public float SpeedMinSeconds { get; set; } = 0.25f;
+
+    /// <summary>
+    /// Fewest positions that give a speed (ADR-0056). Fits through five or six positions were up to 10 % off.
+    /// </summary>
+    public int SpeedMinSamples { get; set; } = 8;
+
+    /// <summary>
+    /// Positions the speed zone grows to reach, up to <see cref="SpeedMaxZoneFraction"/> (ADR-0062). With few positions
+    /// the speed of a fast vehicle depends on where in the zone they lie.
+    /// </summary>
+    public int SpeedWantedSamples { get; set; } = 12;
+
+    /// <summary>Largest half width the speed zone grows to for fast vehicles, as a fraction of the image width.</summary>
+    public float SpeedMaxZoneFraction { get; set; } = 0.41667f;
 
     /// <summary>
     /// A track standing this long, in seconds, starts its class votes and speed over when it moves off (ADR-0052);
@@ -235,6 +333,7 @@ public sealed class SiteOptions
         cropped.LineStart = At(t0);
         cropped.LineEnd = At(t1);
         cropped.FarKerb = Along(FarKerb);
+        cropped.Camera = Camera?.ForCrop(top, bottom);
         cropped.NearKerb = Along(NearKerb);
         cropped.StaticZones = [];
         cropped.IgnoreZones = [.. IgnoreZones.Select(z =>
@@ -290,6 +389,9 @@ public sealed class SiteOptions
         WeighVotesByWidth: WeighVotesByWidth,
         Speed: FarKerbMetersPerImageWidth is float far && NearKerbMetersPerImageWidth is float near
             && FarKerb is float farKerb && NearKerb is float nearKerb
-            ? new SpeedSettings(far / frame.Width, near / frame.Width, farKerb, nearKerb, ZonePixels: SpeedZoneFraction * frame.Width, MinSeconds: SpeedMinSeconds)
+            ? new SpeedSettings(
+                far / frame.Width, near / frame.Width, farKerb, nearKerb, ZonePixels: SpeedZoneFraction * frame.Width,
+                MinSamples: SpeedMinSamples, MinSeconds: SpeedMinSeconds, MaxZonePixels: SpeedMaxZoneFraction * frame.Width,
+                Camera: Camera?.Model.ForFrame(frame.Width, frame.Height), WantedSamples: SpeedWantedSamples)
             : null);
 }

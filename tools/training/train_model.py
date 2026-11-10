@@ -7,7 +7,7 @@ regression on those recordings stays a fair test. All views of one sample go to 
 
     .venv\Scripts\python train_model.py [--name tc-v1] [--base yolo11s.pt] [--epochs 100] [--batch 16]
                                         [--imgsz 640] [--val-share 0.15] [--test-tag nc400] [--pixel-patches 0.5]
-                                        [--dry-run]
+                                        [--motion-blur 0.3] [--noise 0.3] [--dry-run]
 
 Writes datasets/training/<name> (images, labels, data.yaml), the run to models/runs/<name> and the exported model
 to models/<name>-640x192.onnx, all in the private repository.
@@ -124,6 +124,10 @@ def main() -> None:
     parser.add_argument("--test-tag", default="nc400", help="recordings with this tag are the test set")
     parser.add_argument("--pixel-patches", type=float, default=0.0,
                         help="probability of random pixelation patches per training image (pixel_patches.py)")
+    parser.add_argument("--motion-blur", type=float, default=0.0,
+                        help="probability of horizontal motion blur on the vehicles per training image (camera_effects.py)")
+    parser.add_argument("--noise", type=float, default=0.0,
+                        help="probability of sensor noise per training image (camera_effects.py)")
     parser.add_argument("--dry-run", action="store_true", help="only build the dataset")
     args = parser.parse_args()
 
@@ -138,6 +142,9 @@ def main() -> None:
     if args.pixel_patches > 0:
         import pixel_patches
         pixel_patches.install(args.pixel_patches)
+    if args.motion_blur > 0 or args.noise > 0:
+        import camera_effects
+        camera_effects.install(args.motion_blur, args.noise)
 
     runs = root / "models" / "runs"
     model = YOLO(args.base)

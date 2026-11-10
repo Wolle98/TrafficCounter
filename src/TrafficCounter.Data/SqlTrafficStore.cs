@@ -229,6 +229,22 @@ public sealed class SqlTrafficStore(IDbContextFactory<TrafficCounterDbContext> c
             }
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsIntegrityViolation(ex))
+        {
+            throw new RecordsRejectedException($"The database refused the batch: {ex.InnerException!.Message}", ex);
+        }
     }
+
+    // Constraint violations are permanent: PostgreSQL SQLSTATE class 23; SQL Server foreign key or check (547),
+    // NULL (515), duplicate key (2601, 2627).
+    private static bool IsIntegrityViolation(DbUpdateException ex) => ex.InnerException switch
+    {
+        Npgsql.PostgresException pg => pg.SqlState.StartsWith("23", StringComparison.Ordinal),
+        Microsoft.Data.SqlClient.SqlException sql => sql.Number is 547 or 515 or 2601 or 2627,
+        _ => false,
+    };
 }

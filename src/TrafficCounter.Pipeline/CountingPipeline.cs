@@ -100,6 +100,7 @@ public sealed class CountingPipeline(IObjectDetector detector, ITracker tracker,
             if (!_gate.ShouldDetect(band, frame.Timestamp, _ignoreInBand))
             {
                 GateStatistics = (GateStatistics.Detected, GateStatistics.Skipped + 1);
+                _counter.NoteCapture(frame.Timestamp, frame.Sequence);
                 return new FrameResult(_band, _line, [], new TrackingResult(frame.Timestamp, [], []), passages, TimeSpan.Zero, null, DetectorRan: false);
             }
         }
@@ -117,7 +118,7 @@ public sealed class CountingPipeline(IObjectDetector detector, ITracker tracker,
         }
 
         TrackingResult tracking = tracker.Update(detections, frame.Timestamp, lighting);
-        passages.AddRange(Counted(_counter.Process(tracking)));
+        passages.AddRange(Counted(_counter.Process(tracking, frame.Sequence)));
         return new FrameResult(
             _band, _line, detections, tracking, passages, watch.Elapsed, _counter.TrailerTrackIds.ToHashSet(), Uncounted: [.. _counter.Uncounted]);
     }

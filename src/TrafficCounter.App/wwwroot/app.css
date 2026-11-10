@@ -127,6 +127,9 @@ table.heatmap th.schoolholiday { background: var(--school-holiday); }
 table.heatmap th.publicholiday.schoolholiday { background: linear-gradient(90deg, var(--public-holiday) 50%, var(--school-holiday) 50%); }
 table.heatmap th .footnote-ref { margin-left: .2rem; }
 table.heatmap td.empty { background: repeating-linear-gradient(135deg, #f2f2f2 0 4px, #e6e6e6 4px 8px); }
+table.heatmap td.total { width: auto; padding: 0 .5rem; text-align: right; white-space: nowrap; }
+table.heatmap td.partial { cursor: help; }
+p.footnote-star { font-size: .85rem; color: var(--muted); margin: .4rem 0; }
 
 /* Scale legend below the heatmap: the colour ramp from 0 to the largest value. */
 .heat-legend { display: flex; align-items: center; gap: .6rem; margin: .6rem 0 0; font-size: .8rem; color: var(--muted); }

@@ -35,12 +35,20 @@ internal sealed class FakeStore : ITrafficStore
     /// <summary>Makes exactly this write call fail (1-based), e.g. to interrupt a replay in the middle.</summary>
     public int? FailOnCall { get; set; }
 
+    /// <summary>Records the database refuses for good, like a constraint violation; the whole batch is refused.</summary>
+    public Func<StoreRecord, bool> Refuses { get; set; } = _ => false;
+
     public Task WriteAsync(IReadOnlyList<StoreRecord> records, CancellationToken cancellationToken)
     {
         WriteCalls++;
         if (!Available || WriteCalls == FailOnCall)
         {
             throw new TimeoutException("database down");
+        }
+
+        if (records.Any(Refuses))
+        {
+            throw new RecordsRejectedException("constraint violated", new InvalidOperationException("FK"));
         }
 
         Records.AddRange(records);

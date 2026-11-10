@@ -109,7 +109,7 @@ dotnet run --project src/TrafficCounter.Calibrator  --       --rtsp rtsp://<ip>:
   - `OperatingPeriod`: start, end and end reason.
   - `MinuteStatistic`: one row per minute.
   - `SystemEvent`: camera connected or lost, database unreachable, errors.
-- **Fallback file:** if the database is unreachable, the data goes into `fallback/pending-records.jsonl` in the same base folder as the logs. It is loaded automatically as soon as the database is reachable again.
+- **Fallback file:** if the database is unreachable, the data goes into `fallback/pending-records.jsonl` in the same base folder as the logs. It is loaded automatically as soon as the database is reachable again. A record the database refuses for good (constraint violation) is set aside in `fallback/pending-records.jsonl.rejected`, logged as an error and reported as a system event; the other records are written. Look into that file if it exists.
 
 ## Computing load and weaker hardware ([ADR-0029](adr/0029-computing-load.md))
 
@@ -180,7 +180,7 @@ dotnet run --project src/TrafficCounter.Sync -- sync --direction to-postgres
 ```
 
 - Missing rows are transferred. Of running or finished periods, the newer state wins. Hourly weather is copied along.
-- **Second camera:** if another camera counts the same street into a database of its own, `TrafficCounter.Sync fill-degraded` fills the minutes the counting camera stored as not fully measured with its counts. `tools/deploy/Sync-FillDegraded.ps1` runs sync, fill and sync again over the last 48 hours, e.g. hourly as a scheduled task; `-NotBefore` keeps it away from times the two cameras counted with different models. Its log is `%LOCALAPPDATA%\TrafficCounter\sync-fill-degraded.log`.
+- **Second camera:** if another camera counts the same street into a database of its own, `TrafficCounter.Sync fill-degraded` fills the minutes the counting camera stored as not fully measured with its counts. `tools/deploy/Sync-FillDegraded.ps1` runs sync, fill and sync again over the last 48 hours, e.g. hourly as a scheduled task; `-NotBefore` keeps it away from times the two cameras counted with different models. With `-SpeedClipsFrom <ssh host>` it also fetches new speed clips afterwards (`Get-SpeedClips.ps1`, ADR-0053). Its log is `%LOCALAPPDATA%\TrafficCounter\sync-fill-degraded.log`.
 - Pending migrations are applied to both databases first.
 - Hand-counted recordings are replaced on the other side after a new import.
 - **Deletions are not transferred.**
@@ -191,7 +191,7 @@ dotnet run --project src/TrafficCounter.Sync -- sync --direction to-postgres
 
 **Correcting single passages** found wrong on review: `TrafficCounter.Sync delete-passages --sync-ids <id>,...` (e.g. a pram counted as a motorcycle), `set-class --sync-ids <id> --class Bicycle` (wrong class) and `add-alongside --sync-id <id> [--class Bicycle]` (a second vehicle the counter merged into this passage). They change both databases, because the sync only copies missing rows; `--dry-run true` shows what would change. `clear-speeds --below 3 [--from <time>] [--to <time>]` removes stored speeds below a limit and keeps the passages, for speeds that contain a stop in the measuring area (ADR-0052).
 
-**Marking a period as not measured**, e.g. while a camera delivered only black frames before the watchdog existed: `TrafficCounter.Sync mark-unmeasured --from <time> --to <time> [--dry-run true]`. It sets the minutes to "source unavailable" in both databases, so the analysis treats them as a gap instead of as measured time without traffic.
+**Marking a period as not measured**, e.g. while a camera delivered only black frames before the watchdog existed: `TrafficCounter.Sync mark-unmeasured --from <time> --to <time> [--dry-run true]`. It sets the minutes to "source unavailable" in both databases, so the analysis treats them as a gap instead of as measured time without traffic. With `--state degraded` they become "not fully measured" instead, for a picture that arrived but did not show the street, e.g. a shutter closed in front of the camera; the analysis treats them as a gap as well, and `fill-degraded` may fill them from a second camera.
 
 **Stalled camera:** the service watches whether the camera still delivers a usable picture (`TrafficCounter:SourceWatchdog`). If a whole window (default 120 s) has only black frames, or far fewer frames than normal, it logs an error, stores a `SourceLost` event, marks the minutes as not measured and reopens the camera, again after every window until the picture is back.
 

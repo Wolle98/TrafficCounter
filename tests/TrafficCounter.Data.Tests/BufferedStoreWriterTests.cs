@@ -173,6 +173,34 @@ public sealed class BufferedStoreWriterTests : IDisposable
     }
 
     [Fact]
+    public async Task A_refused_record_is_set_aside_and_does_not_block_the_others()
+    {
+        _store.Refuses = r => r is PassageRecord { Passage.TrackId: 2 };
+
+        await SessionAsync(Samples.Passage(1), Samples.Passage(2), Samples.Passage(3), Samples.Passage(4));
+
+        Assert.Equal([1, 3, 4], _store.Records.OfType<PassageRecord>().Select(p => p.Passage.TrackId));
+        Assert.False(File.Exists(FallbackPath));
+        Assert.Contains("\"TrackId\":2", Assert.Single(File.ReadAllLines(FallbackPath + ".rejected")), StringComparison.Ordinal);
+        Assert.Contains(_store.Records.OfType<SystemEventRecord>(), e => e.Kind == SystemEventKind.Error);
+        Assert.DoesNotContain(_store.Records.OfType<SystemEventRecord>(), e => e.Kind == SystemEventKind.StorageUnavailable);
+    }
+
+    [Fact]
+    public async Task A_refused_record_in_the_fallback_file_does_not_block_the_replay()
+    {
+        _store.Available = false;
+        await SessionAsync([.. Enumerable.Range(1, 7).Select(i => (StoreRecord)Samples.Passage(i))]);
+
+        _store.Available = true;
+        _store.Refuses = r => r is PassageRecord { Passage.TrackId: 5 };
+        await SessionAsync(Samples.Passage(8));
+
+        Assert.Equal([1, 2, 3, 4, 6, 7, 8], _store.Records.OfType<PassageRecord>().Select(p => p.Passage.TrackId));
+        Assert.Equal([FallbackPath + ".rejected"], Directory.GetFiles(_directory));
+    }
+
+    [Fact]
     public async Task Truncated_line_in_fallback_file_is_skipped()
     {
         _store.Available = false;

@@ -16,6 +16,17 @@ public class TrafficStatisticsTests
             .Select(m => new MinuteRow(from.AddMinutes(m), SourceState.Ok, QualityLevel.Good, LightingCondition.Day)));
 
     [Fact]
+    public void Row_total_sums_the_measured_hours_and_counts_the_others()
+    {
+        double?[,] map = new double?[2, 3];
+        map[0, 0] = 2.5;
+        map[0, 2] = 4;
+
+        Assert.Equal((6.5, 1), TrafficStatistics.RowTotal(map, 0));
+        Assert.Equal((null, 3), TrafficStatistics.RowTotal(map, 1));
+    }
+
+    [Fact]
     public void Rate_per_hour_refers_to_the_measured_minutes()
     {
         // 30 vehicles in the first half hour, then the counter was off.
@@ -56,7 +67,7 @@ public class TrafficStatisticsTests
             Car(first.AddDays(1).AddHours(8)), // a Tuesday: not part of the pattern
         ];
 
-        (IReadOnlyList<DateTime> dates, double?[,] values) =
+        (IReadOnlyList<DateTime> dates, double?[,] values, int[,] minutes) =
             TrafficStatistics.DayHeatmap(passages, covered, DayOfWeek.Monday, Day, third.AddDays(1));
 
         Assert.Equal([third, second, first], dates);
@@ -64,6 +75,8 @@ public class TrafficStatisticsTests
         Assert.Null(values[1, 8]);                // not measured
         Assert.Equal(12, values[2, 8]!.Value, 3);
         Assert.Null(values[2, 9]);
+        Assert.Equal(30, minutes[0, 8]);          // extrapolated, marked as not fully counted
+        Assert.Equal(60, minutes[2, 8]);
     }
 
     [Fact]

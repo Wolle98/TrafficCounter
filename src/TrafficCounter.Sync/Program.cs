@@ -24,6 +24,8 @@ switch (args.FirstOrDefault())
         return await SyncAsync(options.GetValueOrDefault("direction", "both"), RangeFrom(options));
     case "rescale-speed":
         return await RescaleSpeedAsync(options);
+    case "scale-speeds":
+        return await ScaleSpeedsAsync(options);
     case "mark-unmeasured":
         return await MarkUnmeasuredAsync(options);
     case "delete-passages":
@@ -78,9 +80,16 @@ switch (args.FirstOrDefault())
                   Recomputes stored speeds after a new speed scale (meters per image width at the kerbs), in both
                   databases; --machine limits it to one counting machine's periods (not passages copied in from a
                   second camera); --old-interpolation linear-meters for speeds stored before ADR-0034.
-              TrafficCounter.Sync mark-unmeasured --from <time> --to <time> [--dry-run true]
-                  Marks the minutes of a period as not measured (source unavailable) in both databases, e.g. while
-                  a stalled camera delivered only black frames; the analysis then treats them as a gap.
+              TrafficCounter.Sync scale-speeds --from <time> --to <time> --class <class> --factor <f> --backup <csv>
+                                       [--machine <name>] [--dry-run true]
+                  Multiplies the stored speeds of one vehicle class by a factor in both databases, e.g. after a
+                  better measuring method showed a class to be measured too slow (ADR-0057). The old speeds are
+                  written to the backup file (SyncId;speed per database) before anything is changed.
+              TrafficCounter.Sync mark-unmeasured --from <time> --to <time> [--state unavailable|degraded] [--dry-run true]
+                  Marks the minutes of a period as not measured in both databases; the analysis then treats them as
+                  a gap. Default "unavailable" (source unavailable, e.g. a stalled camera delivered only black
+                  frames); "degraded" for a picture that arrived but did not show the street fully (e.g. a closed
+                  shutter in front of the camera). fill-degraded may later fill degraded minutes from a second camera.
               TrafficCounter.Sync delete-passages --sync-ids <id>[,<id>...] [--dry-run true]
               TrafficCounter.Sync set-class --sync-ids <id>[,<id>...] --class <class> [--dry-run true]
                   Corrects single counted passages in both databases, e.g. a pram counted as a motorcycle (delete)
@@ -345,12 +354,79 @@ static async Task<int> RescaleSpeedAsync(Dictionary<string, string> options)
     return 0;
 }
 
+static async Task<int> ScaleSpeedsAsync(Dictionary<string, string> options)
+{
+    var invariant = System.Globalization.CultureInfo.InvariantCulture;
+    DateTimeOffset from = DateTimeOffset.Parse(options["from"], invariant);
+    DateTimeOffset to = DateTimeOffset.Parse(options["to"], invariant);
+    VehicleClass vehicleClass = Enum.Parse<VehicleClass>(options["class"], ignoreCase: true);
+    float factor = float.Parse(options["factor"], invariant);
+    string backup = options.GetValueOrDefault("backup") ?? throw new ArgumentException("--backup is required.");
+    bool dryRun = options.GetValueOrDefault("dry-run") is "true";
+    string? machine = options.GetValueOrDefault("machine");
+    if (!dryRun && !await BothReachableAsync())
+    {
+        return 1;
+    }
+
+    if (!dryRun && File.Exists(backup))
+    {
+        Console.Error.WriteLine($"{backup} exists; choose a new backup file, nothing was changed.");
+        return 1;
+    }
+
+    var lines = new List<string> { "Database;SyncId;SpeedKmh" };
+    var changes = new List<(DatabaseProvider Provider, int Count, double Before, double After)>();
+    foreach (DatabaseProvider provider in new[] { DatabaseProvider.PostgreSql, DatabaseProvider.SqlServer })
+    {
+        await using TrafficCounterDbContext db = Open(provider);
+        List<int> periods = machine is null
+            ? []
+            : await db.OperatingPeriods.Where(o => o.MachineName == machine).Select(o => o.Id).ToListAsync();
+        List<VehiclePassage> passages = await db.VehiclePassages
+            .Where(p => p.Source == DataSource.Counter && p.VehicleClass == vehicleClass && p.SpeedKmh != null
+                && p.PassedAt >= from && p.PassedAt < to)
+            .Where(p => machine == null || periods.Contains(p.OperatingPeriodId))
+            .ToListAsync();
+        double before = passages.Sum(p => (double)p.SpeedKmh!.Value);
+        foreach (VehiclePassage passage in passages)
+        {
+            lines.Add(string.Create(invariant, $"{provider};{passage.SyncId};{passage.SpeedKmh}"));
+            passage.SpeedKmh *= factor;
+        }
+
+        if (!dryRun)
+        {
+            // The backup of this database is on disk before its speeds change.
+            await File.WriteAllLinesAsync(backup, lines);
+            await db.SaveChangesAsync();
+        }
+
+        changes.Add((provider, passages.Count, before, passages.Sum(p => (double)p.SpeedKmh!.Value)));
+    }
+
+    foreach ((DatabaseProvider provider, int count, double before, double after) in changes)
+    {
+        Console.WriteLine(count == 0
+            ? $"{provider}: no {vehicleClass} speeds in the period"
+            : $"{provider}: {count} {vehicleClass} speeds {(dryRun ? "would be " : "")}scaled by {factor.ToString(invariant)}, mean {before / count:0.0} -> {after / count:0.0} km/h");
+    }
+
+    return 0;
+}
+
 static async Task<int> MarkUnmeasuredAsync(Dictionary<string, string> options)
 {
     var invariant = System.Globalization.CultureInfo.InvariantCulture;
     DateTimeOffset from = DateTimeOffset.Parse(options["from"], invariant);
     DateTimeOffset to = DateTimeOffset.Parse(options["to"], invariant);
     bool dryRun = options.GetValueOrDefault("dry-run") is "true";
+    TrafficCounter.Core.Operations.SourceState state = options.GetValueOrDefault("state")?.ToLowerInvariant() switch
+    {
+        null or "unavailable" => TrafficCounter.Core.Operations.SourceState.Unavailable,
+        "degraded" => TrafficCounter.Core.Operations.SourceState.Degraded,
+        string other => throw new ArgumentException($"--state must be unavailable or degraded, not {other}."),
+    };
 
     // Changes are not synchronised (only missing rows are copied), so both databases are updated.
     if (!dryRun && !await BothReachableAsync())
@@ -365,8 +441,8 @@ static async Task<int> MarkUnmeasuredAsync(Dictionary<string, string> options)
             .Where(m => m.SourceState == TrafficCounter.Core.Operations.SourceState.Ok && m.MinuteStart >= from && m.MinuteStart < to);
         int count = dryRun
             ? await minutes.CountAsync()
-            : await minutes.ExecuteUpdateAsync(s => s.SetProperty(m => m.SourceState, TrafficCounter.Core.Operations.SourceState.Unavailable));
-        Console.WriteLine($"{provider}: {count} minutes {(dryRun ? "would be " : "")}marked as not measured ({from:yyyy-MM-dd HH:mm}–{to:HH:mm})");
+            : await minutes.ExecuteUpdateAsync(s => s.SetProperty(m => m.SourceState, state));
+        Console.WriteLine($"{provider}: {count} minutes {(dryRun ? "would be " : "")}marked as {state} ({from:yyyy-MM-dd HH:mm}–{to:HH:mm})");
     }
 
     return 0;

@@ -27,9 +27,9 @@ Built with C# / .NET 10, OpenCvSharp, ONNX Runtime (YOLO11; DirectML, OpenVINO, 
 - **Day and night:** separate confidence thresholds at night, from the sun position ([ADR-0028](docs/adr/0028-night-thresholds.md)).
 - **Image quality:** monitoring per minute ([ADR-0023](docs/adr/0023-weather-and-image-quality.md), [ADR-0024](docs/adr/0024-operations-log-and-logging.md)).
 - **Camera position check:** against a reference of static image features ([ADR-0019](docs/adr/0019-camera-position-monitoring.md)).
-- **Speed:** statistical estimate from the ground point near the counting line ([ADR-0033](docs/adr/0033-speed-scale-from-vehicle-lengths.md), [ADR-0034](docs/adr/0034-speed-scale-from-road-marking.md)). It is not a calibrated measuring device.
-  - The scale comes from a measured road marking and a pinhole camera model.
-  - Without a marking, it comes from the lengths of many cars.
+- **Speed:** statistical estimate from the vehicle's track near the counting line. It is not a calibrated measuring device.
+  - With a 3D camera model (lens distortion, pose, road surface from open geodata), the camera-near box edges are put on the road as vertical edges and fitted in metres; fast vehicles get a wider zone instead of no speed ([ADR-0056](docs/adr/0056-speed-from-camera-model-and-near-edges.md)).
+  - Without one, the scale comes from a measured road marking and a pinhole camera model ([ADR-0034](docs/adr/0034-speed-scale-from-road-marking.md)), or from the lengths of many cars ([ADR-0033](docs/adr/0033-speed-scale-from-vehicle-lengths.md)).
   - Test drives at known speed are marked in recordings and compared with the measurement ([ADR-0035](docs/adr/0035-test-drives-for-speed-validation.md)).
 - **Operations log:** operating periods, one statistics row per minute and events. Gaps and degraded image quality are recorded instead of silently lowering the counts.
 - **Training samples:** an optional, time-limited collection mode stores anonymised images of vehicles the current model recognises uncertainly, rarely or late, as material for an own model ([ADR-0026](docs/adr/0026-targeted-collection-of-training-samples.md)).

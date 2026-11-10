@@ -253,6 +253,12 @@
   <data name="Heatmap.NotMeasured" xml:space="preserve">
     <value>not measured</value>
   </data>
+  <data name="Heatmap.CellPartial" xml:space="preserve">
+    <value>{0} {1}:00–{2}:00: {3} vehicles/h, extrapolated from {4} measured minutes</value>
+  </data>
+  <data name="Heatmap.TotalPartial" xml:space="preserve">
+    <value>Without {0} hours that were not measured</value>
+  </data>
   <data name="Home.Today" xml:space="preserve">
     <value>Today</value>
   </data>
@@ -376,8 +382,11 @@
   <data name="Day.Weekday" xml:space="preserve">
     <value>Weekday</value>
   </data>
+  <data name="Day.PartialNote" xml:space="preserve">
+    <value>Not fully counted. At an hour: only 30 to 59 of its minutes were measured (for example after a stream outage, or the hour is still running); the value is extrapolated to the full hour, the tooltip shows the minutes. At the total: hours with less than half an hour measured are missing from it.</value>
+  </data>
   <data name="Day.Hint" xml:space="preserve">
-    <value>Vehicles per hour on each date of the chosen weekday (newest first), relative to the time measured, to compare the same day across weeks. Empty cells: less than half an hour was measured there.</value>
+    <value>Vehicles per hour on each date of the chosen weekday (newest first), relative to the time measured, to compare the same day across weeks. Empty cells: less than half an hour was measured there. Total: sum of the row.</value>
   </data>
   <data name="Format.DayPatternRow" xml:space="preserve">
     <value>d MMM yyyy</value>
@@ -395,7 +404,7 @@
     <value>trucks and buses</value>
   </data>
   <data name="Week.Hint" xml:space="preserve">
-    <value>Average vehicles per hour by weekday and time of day, relative to the time measured. Empty cells: less than half an hour was measured there.</value>
+    <value>Average vehicles per hour by weekday and time of day, relative to the time measured. Empty cells: less than half an hour was measured there. Total: sum of the row; * means that hours are missing from it.</value>
   </data>
   <data name="Speed.Hint" xml:space="preserve">
     <value>Statistical estimates for motor vehicles, not a calibrated measuring method. The scale is checked against test drives at known speed (20 drives, October 2026). Measurement error as a guide: a single measurement typically deviates by about ±4 %, i.e. a little over 1 km/h at 30 km/h, in single cases more (17 of 20 test drives were within ±5 %). Averages over many vehicles are accurate to about ±3 %; comparisons between times of day and directions are hardly affected.</value>

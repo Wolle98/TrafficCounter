@@ -253,6 +253,12 @@
   <data name="Heatmap.NotMeasured" xml:space="preserve">
     <value>nicht gemessen</value>
   </data>
+  <data name="Heatmap.CellPartial" xml:space="preserve">
+    <value>{0} {1}:00–{2}:00: {3} Fahrzeuge/h, hochgerechnet aus {4} gemessenen Minuten</value>
+  </data>
+  <data name="Heatmap.TotalPartial" xml:space="preserve">
+    <value>Ohne {0} nicht gemessene Stunden</value>
+  </data>
   <data name="Home.Today" xml:space="preserve">
     <value>Heute</value>
   </data>
@@ -376,8 +382,11 @@
   <data name="Day.Weekday" xml:space="preserve">
     <value>Wochentag</value>
   </data>
+  <data name="Day.PartialNote" xml:space="preserve">
+    <value>Nicht vollständig gezählt. Bei einer Stunde: Nur 30 bis 59 ihrer Minuten wurden gemessen (etwa nach einem Bildausfall, oder die Stunde läuft noch); der Wert ist auf die volle Stunde hochgerechnet, der Tooltip nennt die Minuten. Bei der Summe: Stunden, in denen weniger als eine halbe Stunde gemessen wurde, fehlen darin.</value>
+  </data>
   <data name="Day.Hint" xml:space="preserve">
-    <value>Fahrzeuge pro Stunde an jedem Datum des gewählten Wochentags (neuestes zuerst), bezogen auf die gemessene Zeit, um denselben Tag über die Wochen zu vergleichen. Leere Felder: dort wurde weniger als eine halbe Stunde gemessen.</value>
+    <value>Fahrzeuge pro Stunde an jedem Datum des gewählten Wochentags (neuestes zuerst), bezogen auf die gemessene Zeit, um denselben Tag über die Wochen zu vergleichen. Leere Felder: dort wurde weniger als eine halbe Stunde gemessen. Summe: Summe der Zeile.</value>
   </data>
   <data name="Format.DayPatternRow" xml:space="preserve">
     <value>dd.MM.yyyy</value>
@@ -395,7 +404,7 @@
     <value>LKW und Busse</value>
   </data>
   <data name="Week.Hint" xml:space="preserve">
-    <value>Durchschnittliche Fahrzeuge pro Stunde je Wochentag und Uhrzeit, bezogen auf die Zeit, in der gemessen wurde. Leere Felder: dort wurde weniger als eine halbe Stunde gemessen.</value>
+    <value>Durchschnittliche Fahrzeuge pro Stunde je Wochentag und Uhrzeit, bezogen auf die Zeit, in der gemessen wurde. Leere Felder: dort wurde weniger als eine halbe Stunde gemessen. Summe: Summe der Zeile; * heißt, dass ihr Stunden fehlen.</value>
   </data>
   <data name="Speed.Hint" xml:space="preserve">
     <value>Statistische Schätzwerte für Kraftfahrzeuge, kein geeichtes Messverfahren. Der Maßstab ist mit Testfahrten bekannter Geschwindigkeit abgeglichen (20 Fahrten, Oktober 2026). Messfehler zur Orientierung: Eine einzelne Messung weicht typischerweise um etwa ±4 % ab, bei 30 km/h also um gut 1 km/h, in Einzelfällen mehr (17 von 20 Testfahrten lagen innerhalb ±5 %). Mittelwerte über viele Fahrzeuge sind auf etwa ±3 % genau; Vergleiche zwischen Tageszeiten und Richtungen sind davon kaum betroffen.</value>

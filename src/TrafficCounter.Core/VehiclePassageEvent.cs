@@ -32,5 +32,11 @@ public sealed record VehiclePassageEvent(
 /// Mean speed over the zone including stops, also when the passage gets no speed because it stopped there; tells
 /// pedestrians from vehicles.
 /// </param>
+/// <param name="CaptureRateRatio">
+/// Rate at which the source delivered frames while the vehicle was in the zone, relative to its normal rate; null if
+/// unknown (ADR-0063).
+/// </param>
+/// <param name="SpeedDiscarded">True if the speed was discarded because that rate was not normal (stalled stream).</param>
 public sealed record TrackObservation(
-    int SpeedSamples, double SpeedSeconds, double TrackSeconds, float FirstDistance, float LastDistance, float? MeanSpeedKmh = null);
+    int SpeedSamples, double SpeedSeconds, double TrackSeconds, float FirstDistance, float LastDistance, float? MeanSpeedKmh = null,
+    float? CaptureRateRatio = null, bool SpeedDiscarded = false);

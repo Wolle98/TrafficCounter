@@ -155,6 +155,15 @@ public interface ITrafficStore
     Task<IReadOnlyList<(int Hour, float Contrast, float Sharpness, int Samples)>> GetQualityHistoryAsync(
         int cameraId, DateTimeOffset since, CancellationToken cancellationToken);
 
-    /// <summary>Writes a batch atomically; minute rows advance the period's heartbeat.</summary>
+    /// <summary>
+    /// Writes a batch atomically; minute rows advance the period's heartbeat. Throws
+    /// <see cref="RecordsRejectedException"/> if the database refuses the batch for good.
+    /// </summary>
     Task WriteAsync(IReadOnlyList<StoreRecord> records, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// The database was reached but refused the records, e.g. because of a constraint violation: retrying the same
+/// records cannot help, unlike an outage.
+/// </summary>
+public sealed class RecordsRejectedException(string message, Exception innerException) : Exception(message, innerException);

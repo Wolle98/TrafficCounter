@@ -153,7 +153,7 @@ public class SpeedEstimationTests
     public void The_mean_speed_includes_the_stop()
     {
         // Walks 1.2 m/s for 1.5 s, stands 1.5 s: no driving speed, mean 0.6 m/s ≈ 2.2 km/h.
-        List<(double, float, float)> samples = [.. Enumerable.Range(0, 45).Select(i => (i / 15.0, 700 - (Math.Min(i, 22) * 1.2f / 0.01f / 15), 0.8f))];
+        List<SpeedSample> samples = [.. Enumerable.Range(0, 45).Select(i => new SpeedSample(i / 15.0, 700 - (Math.Min(i, 22) * 1.2f / 0.01f / 15), 0.8f))];
         Assert.Null(Speed.Estimate(samples));
         Assert.InRange(Speed.MeanSpeed(samples)!.Value, 1.5f, 3.5f);
     }
@@ -164,13 +164,45 @@ public class SpeedEstimationTests
     public void A_stretch_slower_than_the_stop_speed_means_a_stop(float metersPerSecond, bool measured)
     {
         // 0.01 m per pixel on the near kerb: steady driving at the given speed for 3 s.
-        List<(double, float, float)> samples = [.. Enumerable.Range(0, 45).Select(i => (i / 15.0, 700 - (i * metersPerSecond / 0.01f / 15), 0.8f))];
+        List<SpeedSample> samples = [.. Enumerable.Range(0, 45).Select(i => new SpeedSample(i / 15.0, 700 - (i * metersPerSecond / 0.01f / 15), 0.8f))];
         Assert.Equal(measured, Speed.Estimate(samples) is not null);
     }
 
     [Fact]
-    public void Too_few_positions_give_no_speed()
+    public void Fewer_than_eight_positions_give_no_speed()
     {
-        Assert.Null(Speed.Estimate([(0, 100, 0.5f), (0.1, 110, 0.5f)]));
+        Assert.Null(Speed.Estimate([.. Enumerable.Range(0, 7).Select(i => new SpeedSample(i / 15.0, 100 + (10 * i), 0.5f))]));
+    }
+
+    private static readonly SpeedSettings Growing = new(0.02f, 0.01f, 0.2f, 0.8f, ZonePixels: 400, MaxZonePixels: 800);
+
+    // A vehicle crossing the line: one position every step pixels, from reach before the line to reach behind it.
+    private static List<SpeedSample> AlongTheLine(float step, float reach) =>
+        [.. Enumerable.Range(0, (int)(2 * reach / step) + 1).Select(i => new SpeedSample(i / 15.0, i * step, 0.5f, -reach + (i * step)))];
+
+    [Fact]
+    public void A_zone_with_the_wanted_positions_does_not_grow()
+    {
+        Assert.True(Growing.InZone(AlongTheLine(50, 1000)).All(s => Math.Abs(s.Distance) <= 400));
+    }
+
+    [Fact]
+    public void A_zone_with_few_positions_grows_until_it_has_the_wanted_ones()
+    {
+        // 90 px per frame: 9 positions within 400 px, the 12th within 550 px.
+        List<SpeedSample> zone = Growing.InZone(AlongTheLine(90, 1000));
+        Assert.Equal(13, zone.Count);
+        Assert.True(zone.Max(s => Math.Abs(s.Distance)) > 400);
+        Assert.True(zone.Max(s => Math.Abs(s.Distance)) <= 600);
+    }
+
+    [Fact]
+    public void The_zone_grows_no_further_than_its_maximum()
+    {
+        // 200 px per frame: 9 positions within 800 px, too few but still enough for a speed.
+        List<SpeedSample> samples = AlongTheLine(200, 1000);
+        Assert.True(Growing.InZone(samples).All(s => Math.Abs(s.Distance) <= 800));
+        Assert.Equal(9, Growing.InZone(samples).Count);
+        Assert.NotNull(Growing.Estimate(samples));
     }
 }

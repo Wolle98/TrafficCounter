@@ -26,7 +26,7 @@ The pipeline runs in a `BackgroundService`. Next to it, the service runs:
 - on request, reference recordings on a schedule (`ScheduledRecorder`, [ADR-0032](adr/0032-recordings-by-the-service.md)). They get a copy of the camera frames; counting never waits for them;
 - on request, the collection of anonymised training samples (`SampleCollector`, [ADR-0026](adr/0026-targeted-collection-of-training-samples.md)), limited in time and per day.
 
-Capture and processing are decoupled: the capture thread reads the stream continuously and keeps only the latest frame. If detection is slower than the camera, frames are discarded instead of buffered, so no latency can build up. Every frame carries its own timestamp; this keeps tracking and speed correct even when frames are missing.
+Capture and processing are decoupled: the capture thread reads the stream continuously and keeps only the latest frame. If detection is slower than the camera, frames are discarded instead of buffered, so no latency can build up. Every frame carries its own timestamp; this keeps tracking and speed correct even when frames are missing. It also carries the sequence number the source gave it; when a stalled stream delivers its frames late and then in a rush, the timestamps no longer match the moments shown, and the passage gets no speed ([ADR-0063](adr/0063-no-speed-from-a-stalled-stream.md)).
 
 ## Complete chain in detail
 

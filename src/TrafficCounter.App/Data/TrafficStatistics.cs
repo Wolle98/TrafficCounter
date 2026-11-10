@@ -99,6 +99,27 @@ public static class TrafficStatistics
         return [.. Enumerable.Range(0, 24).Select(h => minutes[h] >= 30 ? counts[h] * 60.0 / minutes[h] : (double?)null)];
     }
 
+    /// <summary>Sum of one heatmap row over its measured hours and the number of hours without a value; total null if none has one.</summary>
+    public static (double? Total, int MissingHours) RowTotal(double?[,] values, int row)
+    {
+        double total = 0;
+        int missing = 0;
+        int hours = values.GetLength(1);
+        for (int h = 0; h < hours; h++)
+        {
+            if (values[row, h] is double value)
+            {
+                total += value;
+            }
+            else
+            {
+                missing++;
+            }
+        }
+
+        return (missing == hours ? null : total, missing);
+    }
+
     /// <summary>Average vehicles per hour by weekday (Monday first) and hour; null where nothing was measured.</summary>
     public static double?[,] WeekHeatmap(IEnumerable<PassageRow> passages, HashSet<DateTime> covered)
     {
@@ -128,9 +149,10 @@ public static class TrafficStatistics
 
     /// <summary>
     /// Vehicles per hour for every date of one weekday in the range (rows, newest first) and hour (columns), to compare
-    /// the same weekday across weeks; null where less than half an hour was measured.
+    /// the same weekday across weeks; null where less than half an hour was measured. <c>Minutes</c> holds the measured
+    /// minutes of each cell: a value from fewer than 60 is extrapolated to the full hour.
     /// </summary>
-    public static (IReadOnlyList<DateTime> Dates, double?[,] Values) DayHeatmap(
+    public static (IReadOnlyList<DateTime> Dates, double?[,] Values, int[,] Minutes) DayHeatmap(
         IEnumerable<PassageRow> passages, HashSet<DateTime> covered, DayOfWeek day, DateTime from, DateTime to)
     {
         List<DateTime> dates = [];
@@ -170,7 +192,7 @@ public static class TrafficStatistics
             }
         }
 
-        return (dates, values);
+        return (dates, values, minutes);
     }
 
     public static int DayIndex(DateTime t) => ((int)t.DayOfWeek + 6) % 7;

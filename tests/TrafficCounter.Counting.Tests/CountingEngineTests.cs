@@ -422,6 +422,27 @@ public class CountingEngineTests
     }
 
     [Fact]
+    public void A_track_whose_width_weighted_vote_is_trailer_is_never_emitted()
+    {
+        // Mostly a narrow "truck", but a trailer in the frames where it is seen in full width: the unweighted vote
+        // says truck, the weighted vote that decides the stored class says trailer.
+        var engine = new CountingEngine(new CountingSettings(Line, HysteresisPixels: 8, EmitDistancePixels: 10_000, EmitDelaySeconds: 0, WeighVotesByWidth: true));
+        List<VehiclePassageEvent> events = [];
+        int frame = 0;
+        foreach (float x in Range(900, 300, -30))
+        {
+            bool full = x is <= 620 and >= 410;
+            var box = new BoundingBox(x - 40, 250, full ? 80 : 30, 50);
+            events.AddRange(engine.Process(new TrackingResult(T0 + (FrameInterval * frame++),
+                [new TrackedObject(1, box, full ? VehicleClass.Trailer : VehicleClass.Truck, 0.9f)], [])));
+        }
+
+        events.AddRange(engine.Process(new TrackingResult(T0 + (FrameInterval * frame), [], [1])));
+        Assert.Empty(events);
+        Assert.Equal(UncountedReason.Trailer, Assert.Single(engine.Uncounted).Reason);
+    }
+
+    [Fact]
     public void Flush_emits_pending_passages_and_clears_state()
     {
         CountingEngine engine = CreateEngine();

@@ -39,7 +39,9 @@ if (args is ["-h" or "--help", ..])
           TrafficCounter.Regression --live true [--database SqlServer|PostgreSql] [--video ...] [--recordings ...]
                                     (compares the hand count with what the running service stored, ADR-0032)
           TrafficCounter.Regression --speed true [--live true [--database ...]] [--video ...] [--recordings ...] [--speed-min-seconds 0.4]
-                                    (test drives with known speed against the measured speed, ADR-0035)
+                                    [--speed-min-samples 8] [--camera <camera.json>]
+                                    (test drives with known speed against the measured speed, ADR-0035; --camera
+                                    measures with this camera model, a JSON file with a "Camera" object, ADR-0056)
           TrafficCounter.Regression --calibrate-speed true [--car-length 4.5] [--video ...] [--recordings ...]
                                     (speed scale from the box widths of cars at the counting line, ADR-0015)
           TrafficCounter.Regression --count true --video <video.mp4> [--interval 10]
@@ -142,6 +144,10 @@ if (options.TryGetValue("high-confidence", out string? high))
 TimeSpan tolerance = TimeSpan.FromSeconds(double.Parse(options.GetValueOrDefault("tolerance", "1.5"), CultureInfo.InvariantCulture));
 
 SiteOptions site = SiteConfigurationFile.Read(configPath);
+CameraModelOptions? cameraOverride = options.TryGetValue("camera", out string? cameraFile)
+    ? System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(cameraFile))?["Camera"].Deserialize<CameraModelOptions>()
+        ?? throw new ArgumentException($"{cameraFile} has no \"Camera\" object.")
+    : null;
 YoloDetectorOptions detectorOptions = ReadDetectorOptions(configPath);
 SpeedometerCalibration speedometer = ReadSpeedometer(configPath);
 if (options.TryGetValue("model", out string? model))
@@ -254,6 +260,7 @@ if (options.TryGetValue("trace", out string? traceRange))
     {
         string snapshot = video + ".site.json";
         SiteOptions traceSite = File.Exists(snapshot) ? SiteConfigurationFile.Read(snapshot) : site;
+        traceSite.Camera = cameraOverride ?? traceSite.Camera;
         (_, (float Top, float Bottom)? traceBand) = ReadMetadata(video);
         Trace(video, traceBand is { } tb ? traceSite.ForCrop(tb.Top, tb.Bottom) : traceSite, detector, traceRange, trackerSettings, processing);
     }
@@ -450,6 +457,12 @@ SiteOptions SiteFor(string video)
     SiteOptions recordedSite = File.Exists(snapshot) ? SiteConfigurationFile.Read(snapshot) : site;
     recordedSite.FarKerbMetersPerImageWidth ??= site.FarKerbMetersPerImageWidth;
     recordedSite.NearKerbMetersPerImageWidth ??= site.NearKerbMetersPerImageWidth;
+    recordedSite.Camera = cameraOverride ?? recordedSite.Camera;
+    if (options.TryGetValue("speed-min-samples", out string? minSamples))
+    {
+        recordedSite.SpeedMinSamples = int.Parse(minSamples, CultureInfo.InvariantCulture);
+    }
+
     if (options.TryGetValue("speed-min-seconds", out string? minSeconds))
     {
         recordedSite.SpeedMinSeconds = float.Parse(minSeconds, CultureInfo.InvariantCulture);
@@ -620,8 +633,9 @@ static async Task<(EvaluationResult Result, string Load, List<DetectedPassage> D
     return (evaluation, load, detected, toDirection, uncounted);
 }
 
-// Frame-by-frame log of one section, starting 10 s earlier so the tracker has history. Coordinates are the
-// bottom center of each box in frame pixels; "L" marks the counting line's x at that height.
+// Frame-by-frame log of one section, starting 10 s earlier so the tracker has history, at the processing rate of
+// --max-fps like the service. Coordinates are the bottom center of each box in frame pixels; tracks add their box as
+// [left..right,top].
 static void Trace(string video, SiteOptions site, IObjectDetector detector, string range, TrackerSettings trackerSettings, ProcessingOptions processing)
 {
     string[] parts = range.Split('-');
@@ -656,6 +670,11 @@ static void Trace(string video, SiteOptions site, IObjectDetector detector, stri
         }
 
         using var frame = new Frame(image, timestamps[index], index);
+        if (!pipeline.ShouldProcess(frame.Timestamp))
+        {
+            continue;
+        }
+
         FrameResult result = pipeline.Process(frame);
         if (offset < from)
         {
@@ -665,7 +684,7 @@ static void Trace(string video, SiteOptions site, IObjectDetector detector, stri
         string detections = string.Join(" ", result.Detections.Select(d =>
             string.Create(CultureInfo.InvariantCulture, $"{d.Class}:{d.Confidence:0.00}@{d.Box.BottomCenter.X:0},{d.Box.BottomCenter.Y:0}")));
         string tracks = string.Join(" ", result.Tracking.Active.Select(t =>
-            string.Create(CultureInfo.InvariantCulture, $"#{t.TrackId}:{t.Class}@{t.Box.BottomCenter.X:0},{t.Box.BottomCenter.Y:0}")));
+            string.Create(CultureInfo.InvariantCulture, $"#{t.TrackId}:{t.Class}@{t.Box.BottomCenter.X:0},{t.Box.BottomCenter.Y:0}[{t.Box.Left:0}..{t.Box.Left + t.Box.Width:0},{t.Box.Top:0}]")));
         string removed = result.Tracking.RemovedTrackIds.Count > 0 ? $" removed {string.Join(",", result.Tracking.RemovedTrackIds)}" : "";
         string passages = string.Join(" ", result.Passages.Select(Describe));
         string skipped = result.DetectorRan ? "" : " (motion gate: skipped)";
@@ -679,7 +698,7 @@ static void Trace(string video, SiteOptions site, IObjectDetector detector, stri
 
     static string Describe(VehiclePassageEvent p) => string.Create(CultureInfo.InvariantCulture,
         $"PASSAGE #{p.TrackId} {p.Direction} {p.Class} trailers {p.TrailerCount} speed {(p.SpeedKmh is float kmh ? $"{kmh:0.0} km/h" : "none")}")
-        + (p.Track is { } t ? string.Create(CultureInfo.InvariantCulture, $" from {t.SpeedSamples} positions over {t.SpeedSeconds:0.00} s in the zone, track {t.TrackSeconds:0.00} s from {t.FirstDistance:0} to {t.LastDistance:0} px") : "");
+        + (p.Track is { } t ? string.Create(CultureInfo.InvariantCulture, $" from {t.SpeedSamples} positions over {t.SpeedSeconds:0.00} s in the zone, track {t.TrackSeconds:0.00} s from {t.FirstDistance:0} to {t.LastDistance:0} px, capture rate {t.CaptureRateRatio:0.00}{(t.SpeedDiscarded ? " (speed discarded)" : "")}") : "");
 
     static TimeSpan ParseTime(string text)
     {

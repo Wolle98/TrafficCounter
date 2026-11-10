@@ -691,13 +691,21 @@ internal sealed partial class CountingWorker(
         LogPassage(passage.TrackId, passage.Direction, passage.Class, passage.ClassConfidence, passage.TrailerCount, passage.LinePosition,
             passage.TrackLengthFrames, passage.PassedAt,
             passage.SpeedKmh is float kmh ? kmh.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " km/h" : "none",
-            track?.SpeedSamples ?? 0, track?.SpeedSeconds ?? 0, track?.TrackSeconds ?? 0, track?.FirstDistance ?? 0, track?.LastDistance ?? 0);
+            track?.SpeedSamples ?? 0, track?.SpeedSeconds ?? 0, track?.TrackSeconds ?? 0, track?.FirstDistance ?? 0, track?.LastDistance ?? 0,
+            track?.CaptureRateRatio is float ratio ? ratio.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) : "unknown");
+        if (track is { SpeedDiscarded: true, CaptureRateRatio: float deviating })
+        {
+            LogSpeedDiscarded(passage.TrackId, passage.PassedAt, deviating);
+        }
     }
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Speed of track {TrackId} at {PassedAt:HH:mm:ss.fff} discarded: the source delivered {Ratio:0.00} times its normal frame rate while it was in the zone (stalled stream, ADR-0063)")]
+    private partial void LogSpeedDiscarded(int trackId, DateTimeOffset passedAt, float ratio);
+
     // The part up to "at …" is read back by TrafficCounter.Sync restore-from-log; keep it unchanged.
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Passage track {TrackId}: {Direction} {VehicleClass} ({ClassConfidence:0.00}), {Trailers} trailer(s), line position {LinePosition:0.00}, {Frames} frames, at {PassedAt:HH:mm:ss.fff}; speed {Speed} from {SpeedSamples} positions over {SpeedSeconds:0.00} s in the zone, track {TrackSeconds:0.00} s from {FirstDistance:0} to {LastDistance:0} px beside the line")]
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Passage track {TrackId}: {Direction} {VehicleClass} ({ClassConfidence:0.00}), {Trailers} trailer(s), line position {LinePosition:0.00}, {Frames} frames, at {PassedAt:HH:mm:ss.fff}; speed {Speed} from {SpeedSamples} positions over {SpeedSeconds:0.00} s in the zone, track {TrackSeconds:0.00} s from {FirstDistance:0} to {LastDistance:0} px beside the line, capture rate {CaptureRate} of normal")]
     private partial void LogPassage(int trackId, TravelDirection direction, VehicleClass vehicleClass, float? classConfidence, int trailers, float linePosition, int frames, DateTimeOffset passedAt,
-        string speed, int speedSamples, double speedSeconds, double trackSeconds, float firstDistance, float lastDistance);
+        string speed, int speedSamples, double speedSeconds, double trackSeconds, float firstDistance, float lastDistance, string captureRate);
 
     // Tracks that ended without being counted, to explain missed vehicles (e.g. lost under occlusion before the line).
     [LoggerMessage(Level = LogLevel.Debug, Message = "Uncounted track {TrackId}: {Reason} {VehicleClass}, {Frames} frames, {FirstSeen:HH:mm:ss.fff}–{LastSeen:HH:mm:ss.fff} ({TrackSeconds:0.00} s) from {FirstDistance:0} to {LastDistance:0} px beside the line")]

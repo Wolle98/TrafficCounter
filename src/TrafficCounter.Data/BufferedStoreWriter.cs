@@ -165,10 +165,24 @@ public sealed class BufferedStoreWriter : IAsyncDisposable
                     SystemEventKind.StorageRecovered, EventSeverity.Information, "Database reachable again; buffered records replayed."));
             }
 
-            await _store.WriteAsync(toWrite, CancellationToken.None).ConfigureAwait(false);
+            int count = toWrite.Count;
+            try
+            {
+                await WriteOrSetAsideAsync(toWrite).ConfigureAwait(false);
+            }
+            finally
+            {
+                // After an outage in the middle of isolating a refused record, only the rest is still to be written.
+                if (toWrite.Count < count)
+                {
+                    _backlog.Clear();
+                    batch.Clear();
+                    batch.AddRange(toWrite.Where(r => r is not SystemEventRecord { Kind: SystemEventKind.StorageRecovered }));
+                }
+            }
+
             _backlog.Clear();
-            Interlocked.Add(ref _written, toWrite.Count);
-            _logger.LogDebug("Wrote {Count} records", toWrite.Count);
+            _logger.LogDebug("Wrote {Count} records", count);
 
             if (!_storageAvailable)
             {
@@ -181,9 +195,12 @@ public sealed class BufferedStoreWriter : IAsyncDisposable
             if (_storageAvailable)
             {
                 _logger.LogWarning(ex, "Database not reachable, buffering to {Path}", _fallbackPath);
-                StoreRecord first = batch[0];
-                batch.Add(new SystemEventRecord(first.CameraId, first.OperatingPeriodId, _time.GetLocalNow(),
-                    SystemEventKind.StorageUnavailable, EventSeverity.Warning, $"Database not reachable: {ex.GetType().Name}: {ex.Message}"));
+                if (batch.Count > 0)
+                {
+                    StoreRecord first = batch[0];
+                    batch.Add(new SystemEventRecord(first.CameraId, first.OperatingPeriodId, _time.GetLocalNow(),
+                        SystemEventKind.StorageUnavailable, EventSeverity.Warning, $"Database not reachable: {ex.GetType().Name}: {ex.Message}"));
+                }
             }
             else
             {
@@ -233,6 +250,70 @@ public sealed class BufferedStoreWriter : IAsyncDisposable
 
         _backlog.Clear();
         _backlog.AddRange(records.Count > MaxBacklog ? records[^MaxBacklog..] : records);
+    }
+
+    /// <summary>Records the database refused for good; kept for inspection, never replayed.</summary>
+    private string RejectedPath => _fallbackPath + ".rejected";
+
+    /// <summary>
+    /// Writes <paramref name="records"/>. If the database refuses the batch for good, the refused records are found by
+    /// halving it and set aside in the rejected file, so they never block the records behind them. The list shrinks
+    /// by what is done: after an outage (any other exception) it holds exactly the records not written yet.
+    /// </summary>
+    private async Task WriteOrSetAsideAsync(List<StoreRecord> records)
+    {
+        try
+        {
+            await _store.WriteAsync(records, CancellationToken.None).ConfigureAwait(false);
+            Interlocked.Add(ref _written, records.Count);
+            records.Clear();
+        }
+        catch (RecordsRejectedException ex) when (records.Count == 1)
+        {
+            await SetAsideAsync(records[0], ex).ConfigureAwait(false);
+            records.Clear();
+        }
+        catch (RecordsRejectedException)
+        {
+            List<StoreRecord> first = records[..(records.Count / 2)];
+            List<StoreRecord> second = records[(records.Count / 2)..];
+            try
+            {
+                await WriteOrSetAsideAsync(first).ConfigureAwait(false);
+                await WriteOrSetAsideAsync(second).ConfigureAwait(false);
+            }
+            finally
+            {
+                records.Clear();
+                records.AddRange(first);
+                records.AddRange(second);
+            }
+        }
+    }
+
+    private async Task SetAsideAsync(StoreRecord record, RecordsRejectedException ex)
+    {
+        string json = JsonSerializer.Serialize(record, JsonOptions);
+        _logger.LogError(ex, "Database refused a record, set aside in {Path}: {Record}", RejectedPath, json);
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(RejectedPath))!);
+        await File.AppendAllLinesAsync(RejectedPath, [json]).ConfigureAwait(false);
+        if (record is SystemEventRecord)
+        {
+            return;
+        }
+
+        // Written right away: the database is reachable, and the queue may already be closed during shutdown.
+        var notice = new SystemEventRecord(record.CameraId, record.OperatingPeriodId, _time.GetLocalNow(),
+            SystemEventKind.Error, EventSeverity.Error, $"Database refused a record, set aside in {RejectedPath}: {ex.Message}");
+        try
+        {
+            await _store.WriteAsync([notice], CancellationToken.None).ConfigureAwait(false);
+            Interlocked.Increment(ref _written);
+        }
+        catch (Exception noticeError) when (noticeError is not OutOfMemoryException)
+        {
+            _logger.LogWarning(noticeError, "Event about the refused record could not be written");
+        }
     }
 
     private string ReplayingPath => _fallbackPath + ".replaying";
@@ -312,13 +393,16 @@ public sealed class BufferedStoreWriter : IAsyncDisposable
     }
 
     /// <summary>Writes the chunk and then records <paramref name="linesDone"/> atomically in the cursor file.</summary>
+    /// <remarks>
+    /// An outage while a refused record is being isolated leaves the parts written so far in the database; the chunk
+    /// is then replayed again in full. That needs a refused record and an outage within the same seconds.
+    /// </remarks>
     private async Task<int> WriteChunkAsync(List<StoreRecord> chunk, long linesDone)
     {
         int count = chunk.Count;
         if (count > 0)
         {
-            await _store.WriteAsync(chunk, CancellationToken.None).ConfigureAwait(false);
-            Interlocked.Add(ref _written, count);
+            await WriteOrSetAsideAsync([.. chunk]).ConfigureAwait(false);
             chunk.Clear();
         }
 

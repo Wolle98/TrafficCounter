@@ -37,7 +37,7 @@ Format and process: [ADR-0001](0001-use-adrs.md) · Template: [0000-template.md]
 | [0031](0031-h264-reference-videos.md) | Convert reference videos to H.264 with ffmpeg afterwards | accepted | 1 |
 | [0032](0032-recordings-by-the-service.md) | Reference recordings by the running service | accepted | 1, 3 |
 | [0033](0033-speed-scale-from-vehicle-lengths.md) | Speed first with a scale from vehicle lengths | accepted, scale replaced by 0034 | 5 |
-| [0034](0034-speed-scale-from-road-marking.md) | Speed scale from a measured road marking | accepted | 5 |
+| [0034](0034-speed-scale-from-road-marking.md) | Speed scale from a measured road marking | accepted, superseded by 0056 for cameras with a camera model | 5 |
 | [0035](0035-test-drives-for-speed-validation.md) | Test drives for speed validation via recording and marking afterwards | accepted | 5 |
 | [0036](0036-documentation-in-english.md) | Documentation in English | accepted, app UI point superseded by 0037 | all |
 | [0037](0037-multilingual-analysis-app.md) | Multilingual analysis app with one resource file per language | accepted | 4 |
@@ -59,3 +59,11 @@ Format and process: [ADR-0001](0001-use-adrs.md) · Template: [0000-template.md]
 | [0053](0053-speed-clips.md) | Short videos of passages with a conspicuous speed | accepted | 5 |
 | [0054](0054-vehicle-classes-as-counted.md) | Vehicle classes as counted with the own model | accepted | 3 |
 | [0055](0055-small-vans.md) | Small vans – labelled as vans, tolerated as cars | accepted | 3 |
+| [0056](0056-speed-from-camera-model-and-near-edges.md) | Speed on a 3D camera model from the camera-near box edges | accepted | 5 |
+| [0057](0057-class-factors-for-stored-speeds.md) | Class factors for speeds stored before the camera model | accepted | 5 |
+| [0058](0058-class-factors-for-two-wheelers.md) | Class factors for stored two-wheeler speeds | accepted | 5 |
+| [0059](0059-car-lane-from-the-roof-at-night.md) | Car lane from the roof at night | superseded by [0060](0060-car-lane-from-the-bottom-at-night.md) | 5 |
+| [0060](0060-car-lane-from-the-bottom-at-night.md) | Car lane from the box bottom at night | accepted | 5 |
+| [0061](0061-car-factor-for-stored-night-speeds.md) | Car factor for night speeds stored with the roof lane | accepted | 5 |
+| [0062](0062-speed-zone-grows-to-twelve-positions.md) | Speed zone grows to twelve positions | accepted | 5 |
+| [0063](0063-no-speed-from-a-stalled-stream.md) | No speed from a stalled stream | accepted | 5 |

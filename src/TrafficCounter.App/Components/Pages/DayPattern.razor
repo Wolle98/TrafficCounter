@@ -38,7 +38,11 @@
 else if (_heatmap is not null && _labels.Count > 0)
 {
     <DayMarkerList Markers="@_markers" ShowDates="true" />
-    <Heatmap Values="@_heatmap" RowLabels="@_labels" RowClasses="@_rowClasses" RowTitles="@_rowTitles" RowFootnotes="@_rowFootnotes" />
+    <Heatmap Values="@_heatmap" RowLabels="@_labels" RowClasses="@_rowClasses" RowTitles="@_rowTitles" RowFootnotes="@_rowFootnotes" MeasuredMinutes="@_minutes" />
+    @if (_anyPartial)
+    {
+        <p class="footnote-star">* @L["Day.PartialNote"]</p>
+    }
     <NoteFootnotes Notes="@_notes" />
     <p class="hint">@L["Day.Hint"]</p>
 }
@@ -56,6 +60,8 @@ else if (_heatmap is not null)
     private DayOfWeek _day = DateTime.Today.DayOfWeek;
     private string _filter = "all";
     private double?[,]? _heatmap;
+    private int[,]? _minutes;
+    private bool _anyPartial;
     private List<string> _labels = [];
     private List<DayMarker> _markers = [];
     private List<DayMarker> _notes = [];
@@ -92,17 +98,23 @@ else if (_heatmap is not null)
                 "heavy" => passages.Where(p => p.Class is VehicleClass.Truck or VehicleClass.Bus),
                 _ => passages,
             };
-            (IReadOnlyList<DateTime> dates, double?[,] values) = TrafficStatistics.DayHeatmap(selected, covered, _day, from, to);
+            (IReadOnlyList<DateTime> dates, double?[,] values, int[,] minutes) = TrafficStatistics.DayHeatmap(selected, covered, _day, from, to);
 
             // Only dates with at least one measured hour; a range reaching back before the counter started has none.
             List<int> rows = [.. Enumerable.Range(0, dates.Count).Where(r => Enumerable.Range(0, 24).Any(h => values[r, h] is not null))];
             _heatmap = new double?[rows.Count, 24];
+            _minutes = new int[rows.Count, 24];
+            _anyPartial = false;
             for (int i = 0; i < rows.Count; i++)
             {
                 for (int h = 0; h < 24; h++)
                 {
                     _heatmap[i, h] = values[rows[i], h];
+                    _minutes[i, h] = minutes[rows[i], h];
+                    _anyPartial |= values[rows[i], h] is not null && minutes[rows[i], h] < 60;
                 }
+
+                _anyPartial |= TrafficStatistics.RowTotal(_heatmap, i).MissingHours > 0;
             }
 
             _labels = [.. rows.Select(r => L.Date(dates[r], "Format.DayPatternRow"))];

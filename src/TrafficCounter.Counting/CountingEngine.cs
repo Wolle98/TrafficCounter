@@ -14,6 +14,7 @@ public sealed class CountingEngine(CountingSettings settings)
     private readonly TrailerSettings _trailers = settings.Trailers ?? TrailerSettings.Default;
     private readonly List<VehiclePassageEvent> _recent = [];
     private readonly List<UncountedTrack> _uncounted = [];
+    private readonly CaptureRate _captureRate = new();
 
     /// <summary>
     /// Bicycles, e-scooters and motorcycles neither tow nor are trailers: riders in line keep a constant gap like a
@@ -38,10 +39,28 @@ public sealed class CountingEngine(CountingSettings settings)
     /// <summary>Tracks that ended in the last <see cref="Process"/> call without being counted, to explain missed vehicles.</summary>
     public IReadOnlyList<UncountedTrack> Uncounted => _uncounted;
 
-    public IReadOnlyList<VehiclePassageEvent> Process(TrackingResult result)
+    /// <summary>Normal frame rate of the source, from the frames noted so far (ADR-0063); null if not known yet.</summary>
+    public double? NormalCaptureRate => _captureRate.PerSecond;
+
+    /// <summary>
+    /// Notes a frame of the source that is not processed (e.g. skipped by the motion gate), so the normal frame rate
+    /// is known from all frames (ADR-0063).
+    /// </summary>
+    public void NoteCapture(DateTimeOffset timestamp, long captureSequence) => _captureRate.Add(timestamp, captureSequence);
+
+    /// <param name="result">Tracker output of one frame.</param>
+    /// <param name="captureSequence">
+    /// Sequence number the source gave the frame (counting all frames it delivered); null if unknown. Without it a
+    /// stalled stream cannot be recognised and speeds are not checked for it (ADR-0063).
+    /// </param>
+    public IReadOnlyList<VehiclePassageEvent> Process(TrackingResult result, long? captureSequence = null)
     {
         List<VehiclePassageEvent> passages = [];
         _uncounted.Clear();
+        if (captureSequence is long sequence)
+        {
+            _captureRate.Add(result.Timestamp, sequence);
+        }
 
         foreach (TrackedObject obj in result.Active)
         {
@@ -51,7 +70,7 @@ public sealed class CountingEngine(CountingSettings settings)
                 _tracks.Add(obj.TrackId, state);
             }
 
-            Observe(state, obj, result.Timestamp);
+            Observe(state, obj, result.Timestamp, captureSequence);
         }
 
         UpdateCouplings(result.Active, result.Timestamp);
@@ -110,7 +129,7 @@ public sealed class CountingEngine(CountingSettings settings)
     }
 
     private UncountedReason UncountedReasonOf(TrackState state) =>
-        state.IsTrailer || state.LeadingClass == VehicleClass.Trailer ? UncountedReason.Trailer
+        state.IsTrailer || IsTrailerClass(state) ? UncountedReason.Trailer
         : state.Crossing is null ? UncountedReason.NotCrossed
         : state.Frames < settings.MinTrackFrames ? UncountedReason.TooShort
         : state.EndedOnFarSide ? UncountedReason.EndedAtLine
@@ -137,13 +156,17 @@ public sealed class CountingEngine(CountingSettings settings)
 
     // A track detected as a trailer is never a vehicle of its own, even if no towing vehicle was found (ADR-0047).
     private bool IsReadyToEmit(TrackState state) =>
-        !state.Emitted && !state.IsTrailer && state.LeadingClass != VehicleClass.Trailer
-        && state.Crossing is not null && state.Frames >= settings.MinTrackFrames;
+        !state.Emitted && !state.IsTrailer && state.Crossing is not null && state.Frames >= settings.MinTrackFrames
+        && !IsTrailerClass(state);
+
+    // Either vote: the unweighted one steers coupling, the stored class comes from the weighted one.
+    private bool IsTrailerClass(TrackState state) =>
+        state.LeadingClass == VehicleClass.Trailer || state.FinalClass(settings.WeighVotesByWidth) == VehicleClass.Trailer;
 
     private VehiclePassageEvent Emit(TrackState state)
     {
         int trailers = _tracks.Values.Count(s => s.IsTrailer && Root(s) == state.TrackId);
-        return state.Emit(trailers, settings.Speed, settings.WeighVotesByWidth);
+        return state.Emit(trailers, settings.Speed, settings.WeighVotesByWidth, _captureRate.PerSecond);
     }
 
     /// <summary>Towing vehicle at the head of a chain of trailers (tractor with two trailers).</summary>
@@ -158,7 +181,7 @@ public sealed class CountingEngine(CountingSettings settings)
         return current.TrackId;
     }
 
-    private void Observe(TrackState state, TrackedObject obj, DateTimeOffset timestamp)
+    private void Observe(TrackState state, TrackedObject obj, DateTimeOffset timestamp, long? captureSequence)
     {
         Point2 point = obj.Box.BottomCenter;
         float distance = settings.Line.SignedDistance(point);
@@ -178,9 +201,9 @@ public sealed class CountingEngine(CountingSettings settings)
 
         state.Vote(obj.Class, obj.Confidence, obj.Box.Width);
         state.UpdateVelocity(point.X, timestamp);
-        if (settings.Speed is { } speed && MathF.Abs(distance) <= speed.ZonePixels)
+        if (settings.Speed is { } speed && MathF.Abs(distance) <= MathF.Max(speed.ZonePixels, speed.MaxZonePixels))
         {
-            state.AddSpeedSample(timestamp, point.X, settings.Line.Project(point));
+            state.AddSpeedSample(timestamp, obj.Box, settings.Line.Project(point), distance, captureSequence);
         }
 
         // Remember when the point last changed sides, interpolated between the two frames.
@@ -309,7 +332,7 @@ public sealed class CountingEngine(CountingSettings settings)
 
         private readonly Dictionary<VehicleClass, float> _votes = [];
         private readonly List<(VehicleClass Class, float Confidence, float Width)> _frameVotes = [];
-        private readonly List<(DateTimeOffset At, float X, float LinePosition)> _speedSamples = [];
+        private readonly List<(DateTimeOffset At, BoundingBox Box, float LinePosition, float Distance, long? Capture)> _speedSamples = [];
         private float? _lastX;
         private DateTimeOffset _lastXAt;
         private int? _candidateLeader;
@@ -363,6 +386,28 @@ public sealed class CountingEngine(CountingSettings settings)
         /// <summary>The class currently winning the vote.</summary>
         public VehicleClass LeadingClass => _votes.Count == 0 ? VehicleClass.Unknown : _votes.MaxBy(v => v.Value).Key;
 
+        /// <summary>
+        /// The class a passage would be stored with now: the winner of the same vote <see cref="Emit"/> uses, which
+        /// is weighted by box width when <paramref name="weighByWidth"/> is set and can differ from
+        /// <see cref="LeadingClass"/>.
+        /// </summary>
+        public VehicleClass FinalClass(bool weighByWidth)
+        {
+            Dictionary<VehicleClass, float> votes = ClassVotes(weighByWidth);
+            return votes.Count == 0 ? VehicleClass.Unknown : votes.MaxBy(v => v.Value).Key;
+        }
+
+        private Dictionary<VehicleClass, float> ClassVotes(bool weighByWidth)
+        {
+            if (!weighByWidth || _frameVotes.Count == 0)
+            {
+                return _votes;
+            }
+
+            float widest = _frameVotes.Max(v => v.Width);
+            return _frameVotes.GroupBy(v => v.Class).ToDictionary(g => g.Key, g => g.Sum(v => v.Confidence * v.Width / widest));
+        }
+
         public void Release()
         {
             LeaderId = null;
@@ -412,8 +457,8 @@ public sealed class CountingEngine(CountingSettings settings)
             return stood;
         }
 
-        public void AddSpeedSample(DateTimeOffset timestamp, float x, float linePosition) =>
-            _speedSamples.Add((timestamp, x, linePosition));
+        public void AddSpeedSample(DateTimeOffset timestamp, BoundingBox box, float linePosition, float distance, long? capture) =>
+            _speedSamples.Add((timestamp, box, linePosition, distance, capture));
 
         public void Couple(int leaderId, float gap, float scale, DateTimeOffset timestamp, TrailerSettings trailers)
         {
@@ -462,18 +507,12 @@ public sealed class CountingEngine(CountingSettings settings)
         public UncountedTrack ToUncounted(UncountedReason reason) =>
             new(trackId, LeadingClass, Frames, FirstTimestamp, LastTimestamp, FirstDistance, LastDistance ?? 0, reason);
 
-        public VehiclePassageEvent Emit(int trailers, SpeedSettings? speed, bool weighByWidth)
+        public VehiclePassageEvent Emit(int trailers, SpeedSettings? speed, bool weighByWidth, double? normalCaptureRate)
         {
             Emitted = true;
             Crossing crossing = Crossing!.Value;
 
-            Dictionary<VehicleClass, float> votes = _votes;
-            if (weighByWidth && _frameVotes.Count > 0)
-            {
-                float widest = _frameVotes.Max(v => v.Width);
-                votes = _frameVotes.GroupBy(v => v.Class).ToDictionary(g => g.Key, g => g.Sum(v => v.Confidence * v.Width / widest));
-            }
-
+            Dictionary<VehicleClass, float> votes = ClassVotes(weighByWidth);
             VehicleClass winner = VehicleClass.Unknown;
             float? share = null;
             float total = votes.Values.Sum();
@@ -486,21 +525,35 @@ public sealed class CountingEngine(CountingSettings settings)
 
             float? kmh = null;
             float? meanKmh = null;
+            float? captureRatio = null;
+            bool discarded = false;
+            List<SpeedSample> used = [];
             if (speed is not null && _speedSamples.Count > 0)
             {
                 DateTimeOffset first = _speedSamples[0].At;
-                List<(double, float, float)> samples = [.. _speedSamples.Select(s => ((s.At - first).TotalSeconds, s.X, s.LinePosition))];
-                kmh = speed.Estimate(samples);
-                meanKmh = speed.MeanSpeed(samples);
+                List<SpeedSample> samples = [.. _speedSamples.Select(s => new SpeedSample(
+                    (s.At - first).TotalSeconds, s.Box.BottomCenter.X, s.LinePosition, s.Distance,
+                    s.Box.Left, s.Box.Left + s.Box.Width, s.Box.Top, s.Box.Top + s.Box.Height, s.Capture))];
+                kmh = speed.Estimate(samples, winner);
+                meanKmh = speed.MeanSpeed(samples, winner);
+                used = speed.InZone(samples);
+                captureRatio = SpeedSettings.CaptureRateRatio(used, normalCaptureRate);
+                if (kmh is not null && speed.CaptureRateDeviates(captureRatio))
+                {
+                    kmh = null; // the frame timestamps do not match the moments shown (ADR-0063)
+                    discarded = true;
+                }
             }
 
             var observation = new TrackObservation(
-                _speedSamples.Count,
-                _speedSamples.Count > 1 ? (_speedSamples[^1].At - _speedSamples[0].At).TotalSeconds : 0,
+                used.Count,
+                used.Count > 1 ? used[^1].Seconds - used[0].Seconds : 0,
                 (LastTimestamp - FirstTimestamp).TotalSeconds,
                 FirstDistance,
                 LastDistance ?? 0,
-                meanKmh);
+                meanKmh,
+                captureRatio,
+                discarded);
             return new VehiclePassageEvent(
                 crossing.At, crossing.Direction, winner, share, kmh, trackId, Frames, crossing.LinePosition, trailers, observation);
         }
